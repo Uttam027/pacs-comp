@@ -755,15 +755,17 @@ export default function PACSPattern() {
                 }} 
               />
               
-              <select 
-                value={filterDistrict} 
+              <select
+                value={filterDistrict}
                 onChange={(e) => setFilterDistrict(e.target.value)}
-                style={{ 
-                  padding: '11px 16px', 
-                  border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
+                style={{
+                  padding: '11px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
                   fontSize: '14px',
-                  minWidth: '160px' 
+                  minWidth: '160px',
+                  backgroundColor: 'white',
+                  color: '#111'
                 }}>
                 <option value="all">All Districts</option>
                 {baseline.districts.map(d => (
@@ -771,15 +773,17 @@ export default function PACSPattern() {
                 ))}
               </select>
 
-              <select 
-                value={filterPattern} 
+              <select
+                value={filterPattern}
                 onChange={(e) => setFilterPattern(e.target.value)}
-                style={{ 
-                  padding: '11px 16px', 
-                  border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
+                style={{
+                  padding: '11px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
                   fontSize: '14px',
-                  minWidth: '180px' 
+                  minWidth: '180px',
+                  backgroundColor: 'white',
+                  color: '#111'
                 }}>
                 <option value="all">All Patterns</option>
                 <option value="stoppedrecent">🟠 Stopped &lt;15 Days</option>
