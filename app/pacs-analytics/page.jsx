@@ -7,6 +7,7 @@ export default function PACSPattern() {
   const [todayFile, setTodayFile] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [baseline, setBaseline] = useState(null);
   const [dailyAnalysis, setDailyAnalysis] = useState(null);
   const [error, setError] = useState(null);
@@ -37,10 +38,12 @@ export default function PACSPattern() {
           setMode('daily');
 
           // Load latest daily analysis (if any)
-          loadLatestDailyAnalysis();
+          await loadLatestDailyAnalysis();
         }
       } catch (err) {
         console.error('Load error:', err);
+      } finally {
+        setInitialLoading(false);
       }
     };
 
@@ -446,10 +449,35 @@ export default function PACSPattern() {
   };
 
   // Main render
+  if (initialLoading) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid #e5e7eb',
+            borderTop: '4px solid #111',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading PACS Analytics...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        
+
         {/* Header */}
         <div style={{ marginBottom: '40px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: '#111' }}>
