@@ -298,7 +298,26 @@ export default function PACSPattern() {
           } catch (e) {}
         }
 
-        if (pattern.pattern === 'regular' && !todayActive) {
+        if (pattern.pattern === 'never' && todayActive) {
+          // Never started PACS that is now active - it has started!
+          change = '🎉 PACS Started!';
+          changeType = 'recovering';
+          stats.newStarts++;
+        } else if (pattern.pattern === 'never' && !todayActive && todayPacs.lastDayEnd && todayPacs.lastDayEnd.trim() !== '') {
+          // Never started PACS that has a lastDayEnd but not active today - it started but stopped
+          change = '⚠️ Started then stopped';
+          changeType = 'stopped';
+          stats.newStops++;
+          if (daysSince !== null && daysSince > 0 && daysSince < 15) {
+            stats.stoppedRecent++;
+          }
+        } else if (pattern.pattern === 'never') {
+          // Never started PACS that still has no activity
+          change = '— Never started';
+          changeType = 'never';
+          daysSince = null;
+          sinceDate = null;
+        } else if (pattern.pattern === 'regular' && !todayActive) {
           change = '⚠️ Regular PACS stopped!';
           changeType = 'breaking';
           stats.breakingPattern++;
@@ -327,9 +346,6 @@ export default function PACSPattern() {
         } else if (todayActive && pattern.pattern === 'regular') {
           change = '✅ Active';
           changeType = 'active';
-        } else if (!todayActive && pattern.pattern === 'never') {
-          change = '— Never started';
-          changeType = 'never';
         }
 
         changes.push({
