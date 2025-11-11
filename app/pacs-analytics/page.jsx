@@ -362,9 +362,96 @@ export default function PACSPattern() {
           <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: '#111' }}>
             PACS Pattern Analysis
           </h1>
-          <p style={{ color: '#6b7280', fontSize: '15px' }}>
+          <p style={{ color: '#6b7280', fontSize: '15px', marginBottom: '16px' }}>
             {mode === 'setup' ? 'Upload 10-12 days of CSV files to identify patterns' : 'Daily monitoring with date-specific uploads'}
           </p>
+
+          {/* Pattern Definitions Box */}
+          <div style={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            padding: '20px 24px',
+            marginBottom: '12px'
+          }}>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#111',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>📊</span>
+              <span>Pattern Definitions</span>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '16px',
+              fontSize: '12px',
+              lineHeight: '1.6'
+            }}>
+              <div>
+                <div style={{ fontWeight: '600', color: '#15803d', marginBottom: '4px' }}>
+                  🟢 Regular (Daily)
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  80%+ consistency rate - PACS performs day-end operations almost every day
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: '600', color: '#ea580c', marginBottom: '4px' }}>
+                  🟡 Irregular
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  40-80% consistency - PACS performs day-end operations occasionally, not daily
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: '600', color: '#dc2626', marginBottom: '4px' }}>
+                  🔴 Stopped
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  &lt;40% consistency or no recent activity - PACS has stopped performing day-end
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                  ⚪ Never Started
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  No day-end date ever recorded - PACS has never performed any day-end operation
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: '600', color: '#b91c1c', marginBottom: '4px' }}>
+                  ⚠️ Breaking Pattern
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  Previously regular PACS that stopped - requires immediate attention
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: '600', color: '#16a34a', marginBottom: '4px' }}>
+                  🎉 Recovering
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  Previously stopped PACS that is now active again - positive change
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: '600', color: '#c2410c', marginBottom: '4px' }}>
+                  🟠 Recently Stopped (&lt;15 Days)
+                </div>
+                <div style={{ color: '#6b7280' }}>
+                  Stopped within last 15 days - still recoverable with intervention
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0f9ff', borderRadius: '6px',
             display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#1e40af', border: '1px solid #bfdbfe' }}>
             <span>💾</span>
