@@ -736,8 +736,8 @@ export default function PACSPattern() {
         {/* RESULTS */}
         {mode === 'daily' && dailyAnalysis && (
           <div>
-            {/* Analysis date banner with upload prompt */}
-            <div style={{ marginBottom: '24px' }}>
+            {/* Top action bar with date and upload button */}
+            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
               {(() => {
                 const analysisDate = new Date(dailyAnalysis.analysisDate);
                 const today = new Date();
@@ -747,18 +747,16 @@ export default function PACSPattern() {
                 const isOld = daysDiff > 0;
 
                 return (
-                  <div style={{
-                    padding: '16px 20px',
-                    backgroundColor: isOld ? '#fef3c7' : '#f0fdf4',
-                    border: `1px solid ${isOld ? '#fbbf24' : '#bbf7d0'}`,
-                    borderRadius: '10px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '12px'
-                  }}>
-                    <div>
+                  <>
+                    {/* Analysis date info */}
+                    <div style={{
+                      flex: '1',
+                      minWidth: '250px',
+                      padding: '16px 20px',
+                      backgroundColor: isOld ? '#fef3c7' : '#f0fdf4',
+                      border: `1px solid ${isOld ? '#fbbf24' : '#bbf7d0'}`,
+                      borderRadius: '10px'
+                    }}>
                       <p style={{ fontSize: '12px', color: isOld ? '#92400e' : '#166534', marginBottom: '4px', fontWeight: '500' }}>
                         {isOld ? '⚠️ Showing Analysis from Previous Upload' : '✅ Latest Analysis'}
                       </p>
@@ -776,31 +774,35 @@ export default function PACSPattern() {
                         )}
                       </p>
                     </div>
-                    {isOld && (
-                      <button
-                        onClick={() => {
-                          setDailyAnalysis(null);
-                          setTodayFile(null);
-                          setSelectedDate(new Date().toISOString().split('T')[0]);
-                          setError(null);
-                          setFilterPattern('all');
-                          setSearchTerm('');
-                        }}
-                        style={{
-                          padding: '10px 20px',
-                          backgroundColor: '#f59e0b',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '13px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}>
-                        📤 Upload Latest CSV
-                      </button>
-                    )}
-                  </div>
+
+                    {/* Upload button - always visible */}
+                    <button
+                      onClick={() => {
+                        setDailyAnalysis(null);
+                        setTodayFile(null);
+                        setSelectedDate(new Date().toISOString().split('T')[0]);
+                        setError(null);
+                        setFilterPattern('all');
+                        setSearchTerm('');
+                      }}
+                      style={{
+                        padding: '12px 24px',
+                        backgroundColor: isOld ? '#f59e0b' : '#111',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                      <span>📤</span>
+                      <span>{isOld ? 'Upload Latest CSV' : 'Upload New CSV'}</span>
+                    </button>
+                  </>
                 );
               })()}
             </div>
