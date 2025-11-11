@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, use } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Upload, TrendingUp, TrendingDown, Calendar, AlertCircle, Check, BarChart3 } from 'lucide-react';
+import { Upload, TrendingUp, TrendingDown, Calendar, AlertCircle, Check, BarChart3, Activity } from 'lucide-react';
 import Link from 'next/link';
 
 declare global {
@@ -594,6 +594,11 @@ const PACSProgressDashboard = () => {
             <Link href="/track-change" className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white text-sm rounded-full hover:bg-blue-600 transition">
               <BarChart3 size={16} />
               <span>Track Progress</span>
+            </Link>
+
+            <Link href="/pacs-analytics" className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500 text-white text-sm rounded-full hover:bg-emerald-600 transition">
+              <Activity size={16} />
+              <span>PACS Analytics</span>
             </Link>
           </div>
         </div>
