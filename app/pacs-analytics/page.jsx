@@ -35,6 +35,9 @@ export default function PACSPattern() {
           };
           setBaseline(baseline);
           setMode('daily');
+
+          // Load latest daily analysis (if any)
+          loadLatestDailyAnalysis();
         }
       } catch (err) {
         console.error('Load error:', err);
@@ -43,6 +46,23 @@ export default function PACSPattern() {
 
     loadBaseline();
   }, []);
+
+  const loadLatestDailyAnalysis = async () => {
+    try {
+      const response = await fetch('/api/pacs-analytics/daily');
+      const result = await response.json();
+
+      if (result.data && result.data.length > 0) {
+        // Get the most recent daily analysis
+        const latest = result.data[0];
+        if (latest && latest.data) {
+          setDailyAnalysis(latest.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading latest daily analysis:', err);
+    }
+  };
 
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(line => line.trim());
@@ -716,18 +736,73 @@ export default function PACSPattern() {
         {/* RESULTS */}
         {mode === 'daily' && dailyAnalysis && (
           <div>
-            {/* Analysis date */}
-            <div style={{ marginBottom: '24px', padding: '16px 20px', backgroundColor: 'white', border: '1px solid #e5e7eb',
-              borderRadius: '10px' }}>
-              <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Analysis Date</p>
-              <p style={{ fontSize: '16px', fontWeight: '600', color: '#111' }}>
-                {new Date(dailyAnalysis.analysisDate).toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
-              </p>
+            {/* Analysis date banner with upload prompt */}
+            <div style={{ marginBottom: '24px' }}>
+              {(() => {
+                const analysisDate = new Date(dailyAnalysis.analysisDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                analysisDate.setHours(0, 0, 0, 0);
+                const daysDiff = Math.floor((today - analysisDate) / (1000 * 60 * 60 * 24));
+                const isOld = daysDiff > 0;
+
+                return (
+                  <div style={{
+                    padding: '16px 20px',
+                    backgroundColor: isOld ? '#fef3c7' : '#f0fdf4',
+                    border: `1px solid ${isOld ? '#fbbf24' : '#bbf7d0'}`,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <div>
+                      <p style={{ fontSize: '12px', color: isOld ? '#92400e' : '#166534', marginBottom: '4px', fontWeight: '500' }}>
+                        {isOld ? '⚠️ Showing Analysis from Previous Upload' : '✅ Latest Analysis'}
+                      </p>
+                      <p style={{ fontSize: '16px', fontWeight: '600', color: isOld ? '#78350f' : '#15803d' }}>
+                        {analysisDate.toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                        {daysDiff > 0 && (
+                          <span style={{ fontSize: '13px', fontWeight: '500', marginLeft: '8px', color: isOld ? '#92400e' : '#166534' }}>
+                            ({daysDiff} {daysDiff === 1 ? 'day' : 'days'} old)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {isOld && (
+                      <button
+                        onClick={() => {
+                          setDailyAnalysis(null);
+                          setTodayFile(null);
+                          setSelectedDate(new Date().toISOString().split('T')[0]);
+                          setError(null);
+                          setFilterPattern('all');
+                          setSearchTerm('');
+                        }}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}>
+                        📤 Upload Latest CSV
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Stats Cards */}
