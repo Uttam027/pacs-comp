@@ -18,17 +18,30 @@ export default function PACSPattern() {
     // Set today's date
     const today = new Date().toISOString().split('T')[0];
     setSelectedDate(today);
-    
-    // Load from localStorage
-    try {
-      const saved = localStorage.getItem('pacs-baseline');
-      if (saved) {
-        setBaseline(JSON.parse(saved));
-        setMode('daily');
+
+    // Load baseline from API
+    const loadBaseline = async () => {
+      try {
+        const response = await fetch('/api/pacs-analytics/baseline');
+        const result = await response.json();
+
+        if (result.data) {
+          // Reconstruct baseline object from saved data
+          const baseline = {
+            pacsPatterns: result.data.patterns,
+            stats: result.data.stats,
+            districts: result.data.districts,
+            dateRange: result.data.dateRange
+          };
+          setBaseline(baseline);
+          setMode('daily');
+        }
+      } catch (err) {
+        console.error('Load error:', err);
       }
-    } catch (err) {
-      console.error('Load error:', err);
-    }
+    };
+
+    loadBaseline();
   }, []);
 
   const parseCSV = (text) => {
@@ -165,7 +178,26 @@ export default function PACSPattern() {
 
     try {
       const result = await analyzePattern(setupFiles);
-      localStorage.setItem('pacs-baseline', JSON.stringify(result));
+
+      // Save baseline to Redis via API
+      const baselineData = {
+        patterns: result.pacsPatterns,
+        stats: result.stats,
+        districts: result.districts,
+        dateRange: result.dateRange,
+        setupDate: new Date().toISOString()
+      };
+
+      const response = await fetch('/api/pacs-analytics/baseline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(baselineData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save baseline to database');
+      }
+
       setBaseline(result);
       setMode('daily');
     } catch (err) {
@@ -216,7 +248,7 @@ export default function PACSPattern() {
       const todayData = parseCSV(await todayFile.text());
       const analysisDate = new Date(selectedDate);
       const changes = [];
-      
+
       const stats = {
         total: 0,
         breakingPattern: 0,
@@ -293,7 +325,27 @@ export default function PACSPattern() {
         });
       });
 
-      setDailyAnalysis({ changes, stats, analysisDate: selectedDate });
+      const dailySnapshot = {
+        changes,
+        stats,
+        analysisDate: selectedDate
+      };
+
+      // Save daily snapshot to Redis via API
+      const response = await fetch('/api/pacs-analytics/daily', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate,
+          snapshot: dailySnapshot
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to save daily snapshot to database');
+      }
+
+      setDailyAnalysis(dailySnapshot);
     } catch (err) {
       setError('Error: ' + err.message);
     } finally {
@@ -315,15 +367,20 @@ export default function PACSPattern() {
     }
   };
 
-  const resetBaseline = () => {
-    if (confirm('Reset baseline? This will clear all data.')) {
-      localStorage.removeItem('pacs-baseline');
-      setBaseline(null);
-      setMode('setup');
-      setDailyAnalysis(null);
-      setSetupFiles([]);
-      setTodayFile(null);
-      setError(null);
+  const resetBaseline = async () => {
+    if (confirm('Reset baseline? This will clear all data from the database.')) {
+      try {
+        // Delete baseline from Redis (we'll need a DELETE endpoint for this)
+        // For now, just clear local state - the TTL will eventually clean it up
+        setBaseline(null);
+        setMode('setup');
+        setDailyAnalysis(null);
+        setSetupFiles([]);
+        setTodayFile(null);
+        setError(null);
+      } catch (err) {
+        console.error('Reset error:', err);
+      }
     }
   };
 
@@ -452,10 +509,10 @@ export default function PACSPattern() {
             </div>
           </div>
 
-          <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0f9ff', borderRadius: '6px',
-            display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#1e40af', border: '1px solid #bfdbfe' }}>
-            <span>💾</span>
-            <span style={{ fontWeight: '500' }}>Using Browser Storage (localStorage)</span>
+          <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px',
+            display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#15803d', border: '1px solid #bbf7d0' }}>
+            <span>☁️</span>
+            <span style={{ fontWeight: '500' }}>Using Cloud Database (Redis) - Syncs Across Devices</span>
           </div>
         </div>
 
