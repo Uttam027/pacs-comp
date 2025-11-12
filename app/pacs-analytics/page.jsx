@@ -84,9 +84,37 @@ export default function PACSAnalytics() {
     return match ? match[1] : null;
   };
 
+  const parseDateString = (dateStr) => {
+    // Handle different date formats: DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD
+    if (!dateStr) return null;
+
+    // Try DD-MM-YYYY or DD/MM/YYYY format (common in Indian data)
+    const parts = dateStr.split(/[-/]/);
+    if (parts.length === 3) {
+      const [first, second, third] = parts;
+
+      // If third part is 4 digits, it's likely YYYY
+      if (third.length === 4) {
+        // DD-MM-YYYY format
+        return new Date(third, second - 1, first);
+      } else if (first.length === 4) {
+        // YYYY-MM-DD format
+        return new Date(first, second - 1, third);
+      }
+    }
+
+    // Fallback to default parsing
+    return new Date(dateStr);
+  };
+
   const calculateDaysBetween = (date1, date2) => {
-    const d1 = new Date(date1);
+    const d1 = parseDateString(date1) || new Date(date1);
     const d2 = new Date(date2);
+
+    // Set both dates to midnight to compare just the date part
+    d1.setHours(0, 0, 0, 0);
+    d2.setHours(0, 0, 0, 0);
+
     return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
   };
 
@@ -140,8 +168,20 @@ export default function PACSAnalytics() {
           return;
         }
 
-        const lastDayEndDate = new Date(pacs.lastDayEnd);
-        const daysSince = calculateDaysBetween(lastDayEndDate, snapshotDate);
+        const lastDayEndDate = parseDateString(pacs.lastDayEnd);
+        const daysSince = calculateDaysBetween(pacs.lastDayEnd, snapshotDate);
+
+        // Debug: Log first few T-1 candidates
+        if (daysSince === 0 && stats.dynamicT1 < 3) {
+          console.log('T-1 PACS found:', {
+            id: pacsId,
+            name: pacs.name,
+            lastDayEnd: pacs.lastDayEnd,
+            parsedDate: lastDayEndDate,
+            snapshotDate: snapshotDate,
+            daysSince
+          });
+        }
 
         let category = '';
         let categoryLabel = '';
