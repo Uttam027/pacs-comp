@@ -111,11 +111,11 @@ export default function PACSAnalytics() {
 
       // If third part is 4 digits, it's likely YYYY
       if (third.length === 4) {
-        // DD-MM-YYYY format
-        return new Date(third, second - 1, first);
+        // DD-MM-YYYY format - convert strings to integers
+        return new Date(parseInt(third), parseInt(second) - 1, parseInt(first));
       } else if (first.length === 4) {
-        // YYYY-MM-DD format
-        return new Date(first, second - 1, third);
+        // YYYY-MM-DD format - convert strings to integers
+        return new Date(parseInt(first), parseInt(second) - 1, parseInt(third));
       }
     }
 
