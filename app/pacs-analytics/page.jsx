@@ -91,7 +91,8 @@ export default function PACSAnalytics() {
       const prevDateStr = new Date(snapshotDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const prevResponse = await fetch(`/api/pacs-analytics/daily?date=${prevDateStr}`);
       const prevResult = await prevResponse.json();
-      const previousData = prevResult.data?.pacsList || null;
+      const previousSnapshot = prevResult.data || null;
+      const previousResults = previousSnapshot?.results || null;
 
       const results = [];
       const districts = new Set();
@@ -148,10 +149,9 @@ export default function PACSAnalytics() {
           }
 
           // Check if New or Consistent
-          if (previousData) {
-            const prevPacs = previousData[pacsId];
-            const wasDynamicT7Yesterday = prevPacs && prevPacs.category &&
-              (prevPacs.category === 'dynamic-t7' || prevPacs.category === 'dynamic-t1' || prevPacs.category === 'consistent' || prevPacs.category === 'new');
+          if (previousResults) {
+            const prevPacsResult = previousResults.find(p => p.id === pacsId);
+            const wasDynamicT7Yesterday = prevPacsResult && prevPacsResult.isDynamicT7;
 
             if (!wasDynamicT7Yesterday) {
               category = 'new';
@@ -180,19 +180,53 @@ export default function PACSAnalytics() {
       });
 
       // Find Dropped PACS (were in previous T-7 but not in current T-7)
-      if (previousData) {
-        Object.entries(previousData).forEach(([pacsId, prevPacs]) => {
-          if (prevPacs.isDynamicT7 && !currentData[pacsId]?.lastDayEnd) {
-            stats.droppedPACS++;
-            results.push({
-              id: pacsId,
-              name: prevPacs.name || pacsId,
-              district: prevPacs.district || 'Unknown',
-              category: 'dropped',
-              categoryLabel: 'Dropped PACS',
-              daysSinceLastDayEnd: null,
-              lastDayEndDate: prevPacs.lastDayEndDate
-            });
+      if (previousResults) {
+        previousResults.forEach((prevPacs) => {
+          if (prevPacs.isDynamicT7) {
+            // Check if this PACS is no longer in T-7 in current data
+            const currentPacs = currentData[prevPacs.id];
+            if (!currentPacs) {
+              // PACS completely missing from current data
+              stats.droppedPACS++;
+              results.push({
+                id: prevPacs.id,
+                name: prevPacs.name || prevPacs.id,
+                district: prevPacs.district || 'Unknown',
+                category: 'dropped',
+                categoryLabel: 'Dropped PACS',
+                daysSinceLastDayEnd: null,
+                lastDayEndDate: prevPacs.lastDayEndDate
+              });
+            } else if (!currentPacs.lastDayEnd || currentPacs.lastDayEnd.trim() === '') {
+              // PACS exists but has no day-end activity now
+              stats.droppedPACS++;
+              results.push({
+                id: prevPacs.id,
+                name: prevPacs.name || prevPacs.id,
+                district: prevPacs.district || 'Unknown',
+                category: 'dropped',
+                categoryLabel: 'Dropped PACS',
+                daysSinceLastDayEnd: null,
+                lastDayEndDate: prevPacs.lastDayEndDate
+              });
+            } else {
+              // Check if current PACS is now outside T-7
+              const currentLastDayEndDate = new Date(currentPacs.lastDayEnd);
+              const currentDaysSince = calculateDaysBetween(currentLastDayEndDate, snapshotDate);
+              if (currentDaysSince > 7) {
+                // PACS was in T-7 yesterday but is now outside T-7
+                stats.droppedPACS++;
+                results.push({
+                  id: prevPacs.id,
+                  name: prevPacs.name || prevPacs.id,
+                  district: prevPacs.district || 'Unknown',
+                  category: 'dropped',
+                  categoryLabel: 'Dropped PACS',
+                  daysSinceLastDayEnd: currentDaysSince,
+                  lastDayEndDate: currentPacs.lastDayEnd
+                });
+              }
+            }
           }
         });
       }
