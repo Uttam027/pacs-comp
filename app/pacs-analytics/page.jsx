@@ -11,6 +11,7 @@ export default function PACSAnalytics() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDistrict, setFilterDistrict] = useState('all');
+  const [allSnapshots, setAllSnapshots] = useState([]);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -24,6 +25,12 @@ export default function PACSAnalytics() {
       const result = await response.json();
 
       console.log('API Response:', result);
+
+      // Store all snapshots for history display
+      if (result.data && Array.isArray(result.data)) {
+        setAllSnapshots(result.data);
+        console.log(`📊 Found ${result.data.length} day(s) of uploaded data`);
+      }
 
       if (result.data && result.data.length > 0) {
         const latest = result.data[0];
@@ -506,12 +513,52 @@ export default function PACSAnalytics() {
             </div>
           </div>
 
-          <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px',
-            display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#15803d', border: '1px solid #bbf7d0' }}>
-            <span>☁️</span>
-            <span style={{ fontWeight: '500' }}>Using Cloud Database (Redis) - Syncs Across Devices</span>
+          <div style={{ marginTop: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px',
+              display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#15803d', border: '1px solid #bbf7d0' }}>
+              <span>☁️</span>
+              <span style={{ fontWeight: '500' }}>Using Cloud Database (Redis) - Syncs Across Devices</span>
+            </div>
+
+            {allSnapshots.length > 0 && (
+              <div style={{ padding: '8px 12px', backgroundColor: '#ede9fe', borderRadius: '6px',
+                display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#6b21a8', border: '1px solid #c4b5fd' }}>
+                <span>📅</span>
+                <span style={{ fontWeight: '500' }}>{allSnapshots.length} day{allSnapshots.length !== 1 ? 's' : ''} of data uploaded</span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Upload History */}
+        {allSnapshots.length > 0 && (
+          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '12px', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#111' }}>
+              📊 Upload History ({allSnapshots.length} days)
+            </h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {allSnapshots.map((snapshot) => (
+                <div
+                  key={snapshot.date}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    border: '1px solid #d1d5db'
+                  }}
+                >
+                  {new Date(snapshot.date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Info message if no data */}
         {!analysis && (
