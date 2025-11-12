@@ -23,16 +23,23 @@ export default function PACSAnalytics() {
       const response = await fetch('/api/pacs-analytics/daily');
       const result = await response.json();
 
+      console.log('API Response:', result);
+
       if (result.data && result.data.length > 0) {
         const latest = result.data[0];
+        console.log('Latest snapshot:', latest);
         if (latest && latest.data) {
           setAnalysis(latest.data);
+          console.log('Analysis set:', latest.data);
         }
+      } else {
+        console.log('No data found, upload form should show');
       }
     } catch (err) {
       console.error('Error loading analysis:', err);
     } finally {
       setInitialLoading(false);
+      console.log('Initial loading complete, analysis:', analysis);
     }
   };
 
@@ -290,6 +297,7 @@ export default function PACSAnalytics() {
   };
 
   if (initialLoading) {
+    console.log('Rendering loading screen...');
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
@@ -313,6 +321,8 @@ export default function PACSAnalytics() {
       </div>
     );
   }
+
+  console.log('Rendering main page, analysis:', analysis);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
