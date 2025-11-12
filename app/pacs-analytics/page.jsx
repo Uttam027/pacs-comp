@@ -149,10 +149,18 @@ export default function PACSAnalytics() {
 
       // Get previous day's data from API
       const prevDateStr = new Date(snapshotDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      console.log('🔍 Looking for previous day data:', prevDateStr);
       const prevResponse = await fetch(`/api/pacs-analytics/daily?date=${prevDateStr}`);
       const prevResult = await prevResponse.json();
       const previousSnapshot = prevResult.data || null;
       const previousResults = previousSnapshot?.results || null;
+
+      if (previousResults) {
+        console.log('✅ Previous day data found:', previousResults.length, 'PACS');
+      } else {
+        console.log('⚠️ No previous day data found. New/Consistent/Dropped detection will be skipped.');
+        console.log('   This is normal for first-time uploads or when no data exists for', prevDateStr);
+      }
 
       const results = [];
       const districts = new Set();
