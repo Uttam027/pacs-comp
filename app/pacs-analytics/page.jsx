@@ -486,7 +486,7 @@ export default function PACSAnalytics() {
         )}
 
         {/* Results */}
-        {analysis && (
+        {analysis && analysis.stats && analysis.results && (
           <div>
             {/* Top action bar */}
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
@@ -502,12 +502,12 @@ export default function PACSAnalytics() {
                   📅 Snapshot Date
                 </p>
                 <p style={{ fontSize: '16px', fontWeight: '600', color: '#15803d' }}>
-                  {new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
+                  {analysis.snapshotDate ? new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
                     weekday: 'short',
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric'
-                  })}
+                  }) : 'N/A'}
                 </p>
               </div>
 
@@ -559,7 +559,7 @@ export default function PACSAnalytics() {
                   💙 DYNAMIC (T-7)
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#0ea5e9', marginBottom: '4px' }}>
-                  {analysis.stats.dynamicT7}
+                  {analysis.stats?.dynamicT7 || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#0369a1' }}>Within 7 days</div>
               </div>
@@ -577,7 +577,7 @@ export default function PACSAnalytics() {
                   🔵 DYNAMIC (T-1)
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#06b6d4', marginBottom: '4px' }}>
-                  {analysis.stats.dynamicT1}
+                  {analysis.stats?.dynamicT1 || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#0e7490' }}>Same day</div>
               </div>
@@ -595,7 +595,7 @@ export default function PACSAnalytics() {
                   🟢 NEW PACS
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#10b981', marginBottom: '4px' }}>
-                  {analysis.stats.newPACS}
+                  {analysis.stats?.newPACS || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#15803d' }}>Started today</div>
               </div>
@@ -613,7 +613,7 @@ export default function PACSAnalytics() {
                   🟡 CONSISTENT
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#f59e0b', marginBottom: '4px' }}>
-                  {analysis.stats.consistentPACS}
+                  {analysis.stats?.consistentPACS || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#c2410c' }}>Ongoing</div>
               </div>
@@ -631,7 +631,7 @@ export default function PACSAnalytics() {
                   🔴 DROPPED
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#ef4444', marginBottom: '4px' }}>
-                  {analysis.stats.droppedPACS}
+                  {analysis.stats?.droppedPACS || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#b91c1c' }}>Lost</div>
               </div>
@@ -667,7 +667,7 @@ export default function PACSAnalytics() {
                   color: '#111'
                 }}>
                 <option value="all">All Districts</option>
-                {analysis.districts.map(d => (
+                {(analysis.districts || []).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
