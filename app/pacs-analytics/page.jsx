@@ -157,6 +157,15 @@ export default function PACSAnalytics() {
       // Get previous day's data from API
       const prevDateStr = new Date(snapshotDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       console.log('🔍 Looking for previous day data:', prevDateStr);
+      console.log('   Current snapshot date:', selectedDate);
+
+      // Also fetch all snapshots to see what dates are available
+      const allResponse = await fetch('/api/pacs-analytics/daily');
+      const allResult = await allResponse.json();
+      if (allResult.data && allResult.data.length > 0) {
+        console.log('📅 Available dates in database:', allResult.data.map(s => s.date).join(', '));
+      }
+
       const prevResponse = await fetch(`/api/pacs-analytics/daily?date=${prevDateStr}`);
       const prevResult = await prevResponse.json();
       const previousSnapshot = prevResult.data || null;
@@ -167,6 +176,7 @@ export default function PACSAnalytics() {
       } else {
         console.log('⚠️ No previous day data found. New/Consistent/Dropped detection will be skipped.');
         console.log('   This is normal for first-time uploads or when no data exists for', prevDateStr);
+        console.log('   💡 Tip: Make sure you have uploaded data for', prevDateStr, 'first');
       }
 
       const results = [];
