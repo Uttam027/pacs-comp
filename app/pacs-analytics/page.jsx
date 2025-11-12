@@ -57,11 +57,25 @@ export default function PACSAnalytics() {
     if (lines.length < 2) throw new Error('Empty or invalid CSV');
 
     const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+    console.log('CSV Headers:', headers);
+    console.log('Looking for columns: PACS ID, PACS Name, District Name, Last Day End Date');
+
     const data = {};
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
       const pacsId = values[headers.indexOf('PACS ID')];
+
+      if (i === 1) {
+        // Debug first row
+        console.log('First data row:', {
+          pacsId,
+          name: values[headers.indexOf('PACS Name')],
+          district: values[headers.indexOf('District Name')],
+          lastDayEnd: values[headers.indexOf('Last Day End Date')]
+        });
+      }
+
       if (pacsId) {
         data[pacsId] = {
           id: pacsId,
@@ -71,6 +85,8 @@ export default function PACSAnalytics() {
         };
       }
     }
+
+    console.log(`Parsed ${Object.keys(data).length} PACS from CSV`);
 
     if (Object.keys(data).length === 0) {
       throw new Error('No valid PACS data found in CSV');
