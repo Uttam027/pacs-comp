@@ -29,8 +29,17 @@ export default function PACSAnalytics() {
         const latest = result.data[0];
         console.log('Latest snapshot:', latest);
         if (latest && latest.data) {
-          setAnalysis(latest.data);
-          console.log('Analysis set:', latest.data);
+          const data = latest.data;
+
+          // Check if this is old data structure (has 'changes' instead of 'results')
+          if (data.changes && !data.results) {
+            console.log('Old data structure detected, skipping load. Please upload new CSV.');
+            // Don't set analysis - let user upload fresh data
+          } else if (data.results && data.stats) {
+            // New data structure
+            setAnalysis(data);
+            console.log('Analysis set (new structure):', data);
+          }
         }
       } else {
         console.log('No data found, upload form should show');
@@ -422,14 +431,17 @@ export default function PACSAnalytics() {
           </div>
         </div>
 
-        {/* Debug Info - Remove after testing */}
-        <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffc107', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', fontFamily: 'monospace' }}>
-          <div><strong>Debug Info:</strong></div>
-          <div>analysis exists: {analysis ? 'YES' : 'NO'}</div>
-          <div>analysis.stats exists: {analysis?.stats ? 'YES' : 'NO'}</div>
-          <div>analysis.results exists: {analysis?.results ? 'YES' : 'NO'}</div>
-          {analysis && <div>analysis keys: {Object.keys(analysis).join(', ')}</div>}
-        </div>
+        {/* Info message if no data */}
+        {!analysis && (
+          <div style={{ backgroundColor: '#e3f2fd', border: '1px solid #2196f3', padding: '16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1565c0' }}>
+              ℹ️ Welcome to PACS Analytics (T-7 Classification)
+            </div>
+            <div style={{ color: '#1976d2' }}>
+              Upload your first CSV report below to start tracking Dynamic Day End activity and PACS status changes.
+            </div>
+          </div>
+        )}
 
         {/* Upload Section */}
         {(!analysis || !analysis.stats || !analysis.results) && (
