@@ -152,7 +152,11 @@ export default function PACSAnalytics() {
       // Calculate T-7 date (7 days before snapshot)
       const t7Date = new Date(snapshotDate.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+      // Debug: Log snapshot date format
+      console.log('Snapshot date:', selectedDate, 'as Date object:', snapshotDate);
+
       // Process current PACS
+      let debugCount = 0;
       Object.entries(currentData).forEach(([pacsId, pacs]) => {
         stats.total++;
         districts.add(pacs.district);
@@ -171,9 +175,23 @@ export default function PACSAnalytics() {
         const lastDayEndDate = parseDateString(pacs.lastDayEnd);
         const daysSince = calculateDaysBetween(pacs.lastDayEnd, snapshotDate);
 
-        // Debug: Log first few T-1 candidates
-        if (daysSince === 0 && stats.dynamicT1 < 3) {
-          console.log('T-1 PACS found:', {
+        // Debug: Log first few PACS to see date parsing
+        if (debugCount < 5) {
+          console.log(`PACS ${debugCount + 1}:`, {
+            id: pacsId,
+            name: pacs.name,
+            lastDayEndRaw: pacs.lastDayEnd,
+            lastDayEndParsed: lastDayEndDate,
+            snapshotDate: snapshotDate,
+            daysSince: daysSince,
+            isDynamicT1: daysSince === 0
+          });
+          debugCount++;
+        }
+
+        // Debug: Log T-1 PACS
+        if (daysSince === 0) {
+          console.log('✅ T-1 PACS found:', {
             id: pacsId,
             name: pacs.name,
             lastDayEnd: pacs.lastDayEnd,
