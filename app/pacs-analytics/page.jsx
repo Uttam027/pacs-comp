@@ -422,8 +422,17 @@ export default function PACSAnalytics() {
           </div>
         </div>
 
+        {/* Debug Info - Remove after testing */}
+        <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffc107', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', fontFamily: 'monospace' }}>
+          <div><strong>Debug Info:</strong></div>
+          <div>analysis exists: {analysis ? 'YES' : 'NO'}</div>
+          <div>analysis.stats exists: {analysis?.stats ? 'YES' : 'NO'}</div>
+          <div>analysis.results exists: {analysis?.results ? 'YES' : 'NO'}</div>
+          {analysis && <div>analysis keys: {Object.keys(analysis).join(', ')}</div>}
+        </div>
+
         {/* Upload Section */}
-        {!analysis && (
+        {(!analysis || !analysis.stats || !analysis.results) && (
           <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '32px', backgroundColor: 'white', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Upload CSV Report</h2>
 
