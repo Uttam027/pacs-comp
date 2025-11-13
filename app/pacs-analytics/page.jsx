@@ -705,6 +705,25 @@ export default function PACSAnalytics() {
     );
   }
 
+  // Calculate district-specific statistics
+  const getDistrictStats = () => {
+    if (!analysis || !analysis.results || filterDistrict === 'all') return null;
+
+    const districtPACS = analysis.results.filter(p => p.district === filterDistrict);
+
+    const stats = {
+      total: districtPACS.length,
+      dynamicT7: districtPACS.filter(p => p.isDynamicT7).length,
+      dynamicT1: districtPACS.filter(p => p.isDynamicT1).length,
+      newPACS: districtPACS.filter(p => p.category === 'new').length,
+      consistentPACS: districtPACS.filter(p => p.category === 'consistent').length,
+      droppedPACS: districtPACS.filter(p => p.category === 'dropped').length,
+      inactive: districtPACS.filter(p => p.category === 'inactive').length,
+    };
+
+    return stats;
+  };
+
   console.log('Rendering main page, analysis:', analysis);
 
   return (
@@ -1255,6 +1274,129 @@ export default function PACSAnalytics() {
                 <option value="inactive">⚪ Inactive ({'>'}T-7)</option>
               </select>
             </div>
+
+            {/* District Statistics */}
+            {getDistrictStats() && (
+              <div style={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '20px 24px',
+                marginBottom: '16px'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#111',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span>📊</span>
+                  <span>{filterDistrict} District Statistics</span>
+                  <span style={{ fontSize: '12px', fontWeight: '400', color: '#6b7280' }}>
+                    ({getDistrictStats().total} total PACS)
+                  </span>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: '12px'
+                }}>
+                  {/* T-7 */}
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#dbeafe',
+                    borderRadius: '8px',
+                    border: '1px solid #93c5fd'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#1e40af', marginBottom: '4px' }}>
+                      💙 Dynamic (T-7)
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#1e40af' }}>
+                      {getDistrictStats().dynamicT7}
+                    </div>
+                  </div>
+
+                  {/* T-1 */}
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#cffafe',
+                    borderRadius: '8px',
+                    border: '1px solid #67e8f9'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#0e7490', marginBottom: '4px' }}>
+                      🔵 Dynamic (T-1)
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#0e7490' }}>
+                      {getDistrictStats().dynamicT1}
+                    </div>
+                  </div>
+
+                  {/* New PACS */}
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#d1fae5',
+                    borderRadius: '8px',
+                    border: '1px solid #6ee7b7'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#047857', marginBottom: '4px' }}>
+                      🟢 New PACS
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#047857' }}>
+                      {getDistrictStats().newPACS}
+                    </div>
+                  </div>
+
+                  {/* Consistent */}
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#fef3c7',
+                    borderRadius: '8px',
+                    border: '1px solid #fcd34d'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#92400e', marginBottom: '4px' }}>
+                      🟡 Consistent
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#92400e' }}>
+                      {getDistrictStats().consistentPACS}
+                    </div>
+                  </div>
+
+                  {/* Dropped */}
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#fee2e2',
+                    borderRadius: '8px',
+                    border: '1px solid #fca5a5'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#991b1b', marginBottom: '4px' }}>
+                      🔴 Dropped
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#991b1b' }}>
+                      {getDistrictStats().droppedPACS}
+                    </div>
+                  </div>
+
+                  {/* Inactive */}
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#4b5563', marginBottom: '4px' }}>
+                      ⚪ Inactive ({'>'}T-7)
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#4b5563' }}>
+                      {getDistrictStats().inactive}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Table */}
             <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
