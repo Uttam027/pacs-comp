@@ -271,8 +271,9 @@ export default function PACSAnalytics() {
         let categoryLabel = '';
         let primaryCategory = '';  // Track T-7/T-1 separately
 
-        // Check Dynamic Day End T-7 (within last 7 days)
-        const isDynamicT7 = daysSince >= 0 && daysSince <= 7;
+        // Check Dynamic Day End T-7 (within last 7 days INCLUDING snapshot date)
+        // daysSince 0-6 means last 7 days (0=today, 6=6 days ago)
+        const isDynamicT7 = daysSince >= 0 && daysSince <= 6;
 
         // Check Dynamic Day End T-1 (same as snapshot date)
         const isDynamicT1 = daysSince === 0;
@@ -362,8 +363,8 @@ export default function PACSAnalytics() {
               // Check if current PACS is now outside T-7
               const currentLastDayEndDate = new Date(currentPacs.lastDayEnd);
               const currentDaysSince = calculateDaysBetween(currentLastDayEndDate, snapshotDate);
-              if (currentDaysSince > 7) {
-                // PACS was in T-7 yesterday but is now outside T-7
+              if (currentDaysSince > 6) {
+                // PACS was in T-7 yesterday but is now outside T-7 (> 6 days ago)
                 stats.droppedPACS++;
                 results.push({
                   id: prevPacs.id,
@@ -563,7 +564,7 @@ export default function PACSAnalytics() {
                   💙 Dynamic Day End (T-7)
                 </div>
                 <div style={{ color: '#6b7280' }}>
-                  Last day-end within 7 days of snapshot date
+                  Last day-end within last 7 days (including snapshot date)
                 </div>
               </div>
               <div>
