@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function PACSAnalytics() {
   // Initialize with yesterday's date
@@ -730,6 +731,38 @@ export default function PACSAnalytics() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+
+        {/* Back to Dashboard Link */}
+        <Link
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            marginBottom: '20px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151',
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            transition: 'all 0.2s',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#f9fafb';
+            e.currentTarget.style.borderColor = '#d1d5db';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white';
+            e.currentTarget.style.borderColor = '#e5e7eb';
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>←</span>
+          <span>Back to Dashboard</span>
+        </Link>
 
         {/* Header */}
         <div style={{ marginBottom: '40px' }}>
