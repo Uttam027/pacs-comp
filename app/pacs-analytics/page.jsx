@@ -269,6 +269,7 @@ export default function PACSAnalytics() {
 
         let category = '';
         let categoryLabel = '';
+        let primaryCategory = '';  // Track T-7/T-1 separately
 
         // Check Dynamic Day End T-7 (within last 7 days)
         const isDynamicT7 = daysSince >= 0 && daysSince <= 7;
@@ -281,14 +282,16 @@ export default function PACSAnalytics() {
 
           if (isDynamicT1) {
             stats.dynamicT1++;
+            primaryCategory = 'dynamic-t1';
             category = 'dynamic-t1';
             categoryLabel = 'Dynamic Day End (T-1)';
           } else {
+            primaryCategory = 'dynamic-t7';
             category = 'dynamic-t7';
             categoryLabel = 'Dynamic Day End (T-7)';
           }
 
-          // Check if New or Consistent
+          // Check if New or Consistent (secondary classification)
           if (previousResults) {
             const prevPacsResult = previousResults.find(p => p.id === pacsId);
             const wasDynamicT7Yesterday = prevPacsResult && prevPacsResult.isDynamicT7;
@@ -304,6 +307,7 @@ export default function PACSAnalytics() {
             }
           }
         } else {
+          primaryCategory = 'inactive';
           category = 'inactive';
           categoryLabel = 'Inactive (>T-7)';
         }
@@ -311,6 +315,7 @@ export default function PACSAnalytics() {
         results.push({
           ...pacs,
           category,
+          primaryCategory,  // Add primaryCategory field
           categoryLabel,
           daysSinceLastDayEnd: daysSince,
           lastDayEndDate: pacs.lastDayEnd,
@@ -447,7 +452,12 @@ export default function PACSAnalytics() {
         p.id.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesDistrict = filterDistrict === 'all' || p.district === filterDistrict;
-      const matchesCategory = filterCategory === 'all' || p.category === filterCategory;
+
+      // Check both category and primaryCategory for filtering
+      // This allows filtering by dynamic-t7/t1 even when category is new/consistent
+      const matchesCategory = filterCategory === 'all' ||
+        p.category === filterCategory ||
+        p.primaryCategory === filterCategory;
 
       return matchesSearch && matchesCategory && matchesDistrict;
     });
