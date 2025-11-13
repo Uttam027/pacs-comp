@@ -424,6 +424,195 @@ export default function PACSAnalytics() {
     }
   };
 
+  const handleBulkUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setLoading(true);
+    setError(null);
+
+    let successCount = 0;
+    let failCount = 0;
+    const results = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const detectedDate = extractDateFromFilename(file.name);
+
+      if (!detectedDate) {
+        results.push({ file: file.name, status: 'failed', reason: 'Could not detect date from filename' });
+        failCount++;
+        continue;
+      }
+
+      try {
+        const currentData = parseCSV(await file.text());
+        const snapshotDate = new Date(detectedDate);
+
+        // Get previous day's data
+        const prevDateStr = new Date(snapshotDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const prevResponse = await fetch(`/api/pacs-analytics/daily?date=${prevDateStr}`);
+        const prevResult = await prevResponse.json();
+        const previousSnapshot = prevResult.data || null;
+        const previousResults = previousSnapshot?.results || null;
+
+        const analysisResults = [];
+        const districts = new Set();
+        const stats = {
+          total: 0,
+          dynamicT7: 0,
+          dynamicT1: 0,
+          newPACS: 0,
+          droppedPACS: 0,
+          consistentPACS: 0
+        };
+
+        // Process current PACS
+        Object.entries(currentData).forEach(([pacsId, pacs]) => {
+          stats.total++;
+          districts.add(pacs.district);
+
+          if (!pacs.lastDayEnd || pacs.lastDayEnd.trim() === '') {
+            analysisResults.push({
+              ...pacs,
+              category: 'no-activity',
+              categoryLabel: 'No Activity',
+              daysSinceLastDayEnd: null,
+              lastDayEndDate: null
+            });
+            return;
+          }
+
+          const daysSince = calculateDaysBetween(pacs.lastDayEnd, snapshotDate);
+          let category = '';
+          let categoryLabel = '';
+          let primaryCategory = '';
+
+          const isDynamicT7 = daysSince >= 0 && daysSince <= 6;
+          const isDynamicT1 = daysSince === 0;
+
+          if (isDynamicT7) {
+            stats.dynamicT7++;
+
+            if (isDynamicT1) {
+              stats.dynamicT1++;
+              primaryCategory = 'dynamic-t1';
+              category = 'dynamic-t1';
+              categoryLabel = 'Dynamic Day End (T-1)';
+            } else {
+              primaryCategory = 'dynamic-t7';
+              category = 'dynamic-t7';
+              categoryLabel = 'Dynamic Day End (T-7)';
+            }
+
+            if (previousResults) {
+              const prevPacsResult = previousResults.find(p => p.id === pacsId);
+              const wasDynamicT7Yesterday = prevPacsResult && prevPacsResult.isDynamicT7;
+
+              if (!wasDynamicT7Yesterday && isDynamicT1) {
+                category = 'new';
+                categoryLabel = 'New PACS';
+                stats.newPACS++;
+              } else if (wasDynamicT7Yesterday) {
+                category = 'consistent';
+                categoryLabel = 'Consistent PACS';
+                stats.consistentPACS++;
+              }
+            }
+          } else {
+            primaryCategory = 'inactive';
+            category = 'inactive';
+            categoryLabel = 'Inactive (>T-7)';
+          }
+
+          analysisResults.push({
+            ...pacs,
+            category,
+            primaryCategory,
+            categoryLabel,
+            daysSinceLastDayEnd: daysSince,
+            lastDayEndDate: pacs.lastDayEnd,
+            isDynamicT7,
+            isDynamicT1
+          });
+        });
+
+        // Find Dropped PACS
+        if (previousResults) {
+          previousResults.forEach((prevPacs) => {
+            if (prevPacs.isDynamicT7) {
+              const currentPacs = currentData[prevPacs.id];
+              if (!currentPacs || !currentPacs.lastDayEnd || currentPacs.lastDayEnd.trim() === '') {
+                stats.droppedPACS++;
+                analysisResults.push({
+                  id: prevPacs.id,
+                  name: prevPacs.name || prevPacs.id,
+                  district: prevPacs.district || 'Unknown',
+                  category: 'dropped',
+                  categoryLabel: 'Dropped PACS',
+                  daysSinceLastDayEnd: null,
+                  lastDayEndDate: prevPacs.lastDayEndDate
+                });
+              } else {
+                const currentDaysSince = calculateDaysBetween(currentPacs.lastDayEnd, snapshotDate);
+                if (currentDaysSince > 6) {
+                  stats.droppedPACS++;
+                  analysisResults.push({
+                    id: prevPacs.id,
+                    name: prevPacs.name || prevPacs.id,
+                    district: prevPacs.district || 'Unknown',
+                    category: 'dropped',
+                    categoryLabel: 'Dropped PACS',
+                    daysSinceLastDayEnd: currentDaysSince,
+                    lastDayEndDate: currentPacs.lastDayEnd
+                  });
+                }
+              }
+            }
+          });
+        }
+
+        const analysisData = {
+          snapshotDate: detectedDate,
+          results: analysisResults,
+          stats,
+          districts: Array.from(districts).sort(),
+          pacsList: currentData
+        };
+
+        // Save to API
+        const saveResponse = await fetch('/api/pacs-analytics/daily', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: detectedDate,
+            snapshot: analysisData
+          })
+        });
+
+        if (saveResponse.ok) {
+          results.push({ file: file.name, date: detectedDate, status: 'success' });
+          successCount++;
+        } else {
+          results.push({ file: file.name, date: detectedDate, status: 'failed', reason: 'Failed to save to database' });
+          failCount++;
+        }
+      } catch (err) {
+        results.push({ file: file.name, status: 'failed', reason: err.message });
+        failCount++;
+      }
+    }
+
+    setLoading(false);
+
+    // Show summary
+    const summary = `Bulk upload complete!\n✓ Success: ${successCount}\n✗ Failed: ${failCount}\n\nDetails:\n${results.map(r => `${r.file}: ${r.status}${r.reason ? ` (${r.reason})` : ''}`).join('\n')}`;
+    alert(summary);
+
+    // Reload to show latest data
+    await loadLatestAnalysis();
+  };
+
   const handleDeleteSnapshot = async (date) => {
     if (!confirm(`Delete snapshot for ${date}? This cannot be undone.`)) {
       return;
@@ -692,31 +881,54 @@ export default function PACSAnalytics() {
 
         {/* Upload Section - Always visible */}
         <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '32px', backgroundColor: 'white', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '700' }}>Upload CSV Report</h2>
-            {analysis && (
-              <button
-                onClick={() => {
-                  setAnalysis(null);
-                  setTodayFile(null);
-                  const yesterday = new Date();
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  setSelectedDate(yesterday.toISOString().split('T')[0]);
-                }}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#fee2e2',
-                  color: '#991b1b',
-                  border: '1px solid #fecaca',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
-                }}
-              >
-                🗑️ Clear & Upload New
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <label style={{
+                padding: '8px 16px',
+                backgroundColor: '#dbeafe',
+                color: '#1e40af',
+                border: '1px solid #93c5fd',
+                borderRadius: '8px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                display: 'inline-block'
+              }}>
+                📦 Bulk Upload (Multiple Files)
+                <input
+                  type="file"
+                  accept=".csv"
+                  multiple
+                  onChange={handleBulkUpload}
+                  disabled={loading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {analysis && (
+                <button
+                  onClick={() => {
+                    setAnalysis(null);
+                    setTodayFile(null);
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    setSelectedDate(yesterday.toISOString().split('T')[0]);
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#fee2e2',
+                    color: '#991b1b',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: '500'
+                  }}
+                >
+                  🗑️ Clear & Upload New
+                </button>
+              )}
+            </div>
           </div>
 
             <div style={{ marginBottom: '20px' }}>
