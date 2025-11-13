@@ -1374,36 +1374,6 @@ export default function PACSAnalytics() {
         {/* Results */}
         {analysis && analysis.stats && analysis.results && (
           <div>
-            {/* Top action bar */}
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-              <button
-                onClick={() => {
-                  setAnalysis(null);
-                  setTodayFile(null);
-                  setSelectedDate(new Date().toISOString().split('T')[0]);
-                  setError(null);
-                  setFilterCategory('all');
-                  setSearchTerm('');
-                }}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#111',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                <span>📤</span>
-                <span>Upload New CSV</span>
-              </button>
-            </div>
-
             {/* Stats Cards */}
             <div style={{
               display: 'grid',
