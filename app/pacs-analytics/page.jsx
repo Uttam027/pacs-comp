@@ -1127,17 +1127,12 @@ export default function PACSAnalytics() {
                         </td>
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
                           {(() => {
-                            // Dynamic T-7 or T-1 PACS
-                            if (p.isDynamicT7 || p.isDynamicT1) {
-                              const daysText = p.daysSinceLastDayEnd === 0 ? 'today' :
-                                               p.daysSinceLastDayEnd === 1 ? '1 day ago' :
-                                               `${p.daysSinceLastDayEnd} days ago`;
-                              return `Day-end on ${p.lastDayEndDate || 'unknown date'} (${daysText})`;
-                            }
+                            // Check secondary categories first (New, Consistent, Dropped)
+                            // These have more specific reasons than the primary categories
 
                             // New PACS
                             if (p.category === 'new') {
-                              return 'First appearance in Dynamic T-7';
+                              return 'First appearance in Dynamic T-7 (day-end today)';
                             }
 
                             // Consistent PACS
@@ -1155,6 +1150,14 @@ export default function PACSAnalytics() {
                               const daysText = p.daysSinceLastDayEnd !== null ?
                                 `${p.daysSinceLastDayEnd} days ago` : 'unknown';
                               return `Last activity >7 days ago (${daysText})`;
+                            }
+
+                            // Dynamic T-7 or T-1 PACS (without secondary classification)
+                            if (p.isDynamicT7 || p.isDynamicT1) {
+                              const daysText = p.daysSinceLastDayEnd === 0 ? 'today' :
+                                               p.daysSinceLastDayEnd === 1 ? '1 day ago' :
+                                               `${p.daysSinceLastDayEnd} days ago`;
+                              return `Day-end on ${p.lastDayEndDate || 'unknown date'} (${daysText})`;
                             }
 
                             return '—';
