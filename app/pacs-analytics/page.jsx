@@ -317,19 +317,18 @@ export default function PACSAnalytics() {
             const prevPacsResult = previousResults.find(p => p.id === pacsId);
             const wasDynamicT7Yesterday = prevPacsResult && prevPacsResult.isDynamicT7;
 
-            // New PACS: Did day-end TODAY (T-1) AND was NOT in T-7 yesterday
-            // This ensures PACS with older day-end dates (from previous T-7 range) are not marked as "New"
-            if (!wasDynamicT7Yesterday && isDynamicT1) {
+            // New PACS: Is in T-7 today BUT was NOT in T-7 yesterday
+            // This means they appear in T-7 for the first time
+            if (!wasDynamicT7Yesterday) {
               category = 'new';
               categoryLabel = 'New PACS';
               stats.newPACS++;
-            } else if (wasDynamicT7Yesterday) {
+            } else {
+              // Consistent PACS: Was in T-7 yesterday AND is in T-7 today
               category = 'consistent';
               categoryLabel = 'Consistent PACS';
               stats.consistentPACS++;
             }
-            // If wasDynamicT7Yesterday is false but isDynamicT1 is also false,
-            // the PACS keeps its primary category (dynamic-t7 or inactive)
           }
         } else {
           primaryCategory = 'inactive';
@@ -529,11 +528,14 @@ export default function PACSAnalytics() {
               const prevPacsResult = previousResults.find(p => p.id === pacsId);
               const wasDynamicT7Yesterday = prevPacsResult && prevPacsResult.isDynamicT7;
 
-              if (!wasDynamicT7Yesterday && isDynamicT1) {
+              // New PACS: Is in T-7 today BUT was NOT in T-7 yesterday
+              // This means they appear in T-7 for the first time
+              if (!wasDynamicT7Yesterday) {
                 category = 'new';
                 categoryLabel = 'New PACS';
                 stats.newPACS++;
-              } else if (wasDynamicT7Yesterday) {
+              } else {
+                // Consistent PACS: Was in T-7 yesterday AND is in T-7 today
                 category = 'consistent';
                 categoryLabel = 'Consistent PACS';
                 stats.consistentPACS++;
