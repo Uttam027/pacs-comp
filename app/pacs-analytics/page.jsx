@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function PACSAnalytics() {
   // Initialize with yesterday's date
@@ -22,6 +23,7 @@ export default function PACSAnalytics() {
   const [allSnapshots, setAllSnapshots] = useState([]);
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
   const [isUploadExpanded, setIsUploadExpanded] = useState(false);
+  const [isTrendExpanded, setIsTrendExpanded] = useState(false);
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -707,6 +709,33 @@ export default function PACSAnalytics() {
     );
   }
 
+  // Generate trend data from all snapshots
+  const getTrendData = () => {
+    if (!allSnapshots || allSnapshots.length === 0) return [];
+
+    // Sort snapshots by date (oldest first for the chart)
+    const sortedSnapshots = [...allSnapshots].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    // Take last 30 days only
+    const last30 = sortedSnapshots.slice(-30);
+
+    return last30.map(snapshot => {
+      const stats = snapshot.data?.stats || {};
+      return {
+        date: new Date(snapshot.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        fullDate: snapshot.date,
+        'T-7': stats.dynamicT7 || 0,
+        'T-1': stats.dynamicT1 || 0,
+        'New': stats.newPACS || 0,
+        'Consistent': stats.consistentPACS || 0,
+        'Dropped': stats.droppedPACS || 0,
+        'Inactive': stats.total ? (stats.total - stats.dynamicT7) : 0
+      };
+    });
+  };
+
   // Calculate district-specific statistics
   const getDistrictStats = () => {
     if (!analysis || !analysis.results || filterDistrict === 'all') return null;
@@ -1141,6 +1170,187 @@ export default function PACSAnalytics() {
             </div>
           )}
         </div>
+
+        {/* Trend Chart Section - Collapsible */}
+        {allSnapshots.length >= 2 && (
+          <div style={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            marginBottom: '24px',
+            overflow: 'hidden'
+          }}>
+            {/* Accordion Header */}
+            <button
+              onClick={() => setIsTrendExpanded(!isTrendExpanded)}
+              style={{
+                width: '100%',
+                padding: '16px 20px',
+                backgroundColor: isTrendExpanded ? '#f9fafb' : 'white',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '18px' }}>📈</span>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'left' }}>
+                    Trend Analysis
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
+                    {isTrendExpanded ? 'Click to hide trend charts' : `View ${allSnapshots.length} days of historical trends`}
+                  </div>
+                </div>
+              </div>
+              <span style={{ fontSize: '20px', color: '#6b7280', transition: 'transform 0.2s', transform: isTrendExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                ▼
+              </span>
+            </button>
+
+            {/* Accordion Content */}
+            {isTrendExpanded && (
+              <div style={{ padding: '32px', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111', marginBottom: '8px' }}>
+                    PACS Activity Trends (Last {getTrendData().length} Days)
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#6b7280' }}>
+                    Track how PACS classifications change over time to identify patterns and trends
+                  </p>
+                </div>
+
+                {/* Chart */}
+                <div style={{ width: '100%', height: '400px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={getTrendData()}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="date"
+                        style={{ fontSize: '12px' }}
+                        stroke="#6b7280"
+                      />
+                      <YAxis
+                        style={{ fontSize: '12px' }}
+                        stroke="#6b7280"
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '12px' }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="T-7"
+                        stroke="#0ea5e9"
+                        strokeWidth={2}
+                        dot={{ fill: '#0ea5e9', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="T-1"
+                        stroke="#06b6d4"
+                        strokeWidth={2}
+                        dot={{ fill: '#06b6d4', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="New"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ fill: '#10b981', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Consistent"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        dot={{ fill: '#f59e0b', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Dropped"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={{ fill: '#ef4444', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Inactive"
+                        stroke="#9ca3af"
+                        strokeWidth={2}
+                        dot={{ fill: '#9ca3af', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Summary Stats */}
+                <div style={{
+                  marginTop: '24px',
+                  padding: '16px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: '12px'
+                }}>
+                  {getTrendData().length > 0 && (() => {
+                    const latest = getTrendData()[getTrendData().length - 1];
+                    const earliest = getTrendData()[0];
+
+                    return (
+                      <>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>T-7 Change</div>
+                          <div style={{ fontSize: '18px', fontWeight: '600', color: latest['T-7'] >= earliest['T-7'] ? '#10b981' : '#ef4444' }}>
+                            {latest['T-7'] >= earliest['T-7'] ? '+' : ''}{latest['T-7'] - earliest['T-7']}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>T-1 Change</div>
+                          <div style={{ fontSize: '18px', fontWeight: '600', color: latest['T-1'] >= earliest['T-1'] ? '#10b981' : '#ef4444' }}>
+                            {latest['T-1'] >= earliest['T-1'] ? '+' : ''}{latest['T-1'] - earliest['T-1']}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>New PACS Trend</div>
+                          <div style={{ fontSize: '18px', fontWeight: '600', color: '#10b981' }}>
+                            {latest['New']} today
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Dropped Trend</div>
+                          <div style={{ fontSize: '18px', fontWeight: '600', color: '#ef4444' }}>
+                            {latest['Dropped']} today
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Results */}
         {analysis && analysis.stats && analysis.results && (
