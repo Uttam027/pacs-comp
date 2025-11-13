@@ -1291,14 +1291,6 @@ export default function PACSAnalytics() {
                         dot={{ fill: '#ef4444', r: 3 }}
                         activeDot={{ r: 5 }}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="Inactive"
-                        stroke="#9ca3af"
-                        strokeWidth={2}
-                        dot={{ fill: '#9ca3af', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
