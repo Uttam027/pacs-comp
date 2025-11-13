@@ -635,30 +635,6 @@ export default function PACSAnalytics() {
     await loadLatestAnalysis();
   };
 
-  const handleDeleteSnapshot = async (date) => {
-    if (!confirm(`Delete snapshot for ${date}? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/pacs-analytics/daily?date=${date}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        console.log(`✅ Deleted snapshot for ${date}`);
-        // Reload data
-        await loadLatestAnalysis();
-      } else {
-        console.error('Failed to delete snapshot');
-        alert('Failed to delete snapshot');
-      }
-    } catch (err) {
-      console.error('Error deleting snapshot:', err);
-      alert('Error deleting snapshot');
-    }
-  };
-
   const filteredData = () => {
     if (!analysis) return [];
 
@@ -867,22 +843,6 @@ export default function PACSAnalytics() {
                       year: 'numeric'
                     })}
                   </span>
-                  <button
-                    onClick={() => handleDeleteSnapshot(snapshot.date)}
-                    style={{
-                      padding: '2px 6px',
-                      backgroundColor: '#fee2e2',
-                      color: '#991b1b',
-                      border: '1px solid #fecaca',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontWeight: '500'
-                    }}
-                    title="Delete this snapshot"
-                  >
-                    ✕
-                  </button>
                 </div>
               ))}
             </div>
