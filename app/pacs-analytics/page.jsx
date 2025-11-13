@@ -2,6 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function PACSAnalytics() {
   // Initialize with yesterday's date
@@ -24,6 +32,8 @@ export default function PACSAnalytics() {
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
   const [isUploadExpanded, setIsUploadExpanded] = useState(false);
   const [isTrendExpanded, setIsTrendExpanded] = useState(false);
+  const [selectedPACS, setSelectedPACS] = useState(null);
+  const [isTimelineDialogOpen, setIsTimelineDialogOpen] = useState(false);
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -753,6 +763,94 @@ export default function PACSAnalytics() {
     };
 
     return stats;
+  };
+
+  // Build timeline for a specific PACS
+  const buildPACSTimeline = (pacsId) => {
+    if (!allSnapshots || allSnapshots.length === 0) return [];
+
+    const timeline = [];
+    const sortedSnapshots = [...allSnapshots].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    sortedSnapshots.forEach(snapshot => {
+      const pacsData = snapshot.data?.results?.find(p => p.id === pacsId);
+      if (pacsData) {
+        timeline.push({
+          date: snapshot.date,
+          category: pacsData.category,
+          primaryCategory: pacsData.primaryCategory || pacsData.category,
+          categoryLabel: pacsData.categoryLabel,
+          lastDayEnd: pacsData.lastDayEndDate,
+          daysAgo: pacsData.daysSinceLastDayEnd,
+          isDynamicT7: pacsData.isDynamicT7,
+          isDynamicT1: pacsData.isDynamicT1
+        });
+      }
+    });
+
+    return timeline.slice(-30); // Last 30 days
+  };
+
+  // Get category color for timeline visualization
+  const getCategoryColor = (category) => {
+    const colors = {
+      'dynamic-t1': '#06b6d4',
+      'dynamic-t7': '#0ea5e9',
+      'new': '#10b981',
+      'consistent': '#f59e0b',
+      'dropped': '#ef4444',
+      'inactive': '#9ca3af',
+      'no-activity': '#d1d5db'
+    };
+    return colors[category] || '#e5e7eb';
+  };
+
+  // Calculate timeline statistics
+  const getTimelineStats = (timeline) => {
+    if (!timeline || timeline.length === 0) return null;
+
+    const activeDays = timeline.filter(d => d.isDynamicT7).length;
+
+    // Calculate current streak
+    let currentStreak = 0;
+    for (let i = timeline.length - 1; i >= 0; i--) {
+      if (timeline[i].isDynamicT7) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    // Calculate longest streak
+    let longestStreak = 0;
+    let tempStreak = 0;
+    timeline.forEach(day => {
+      if (day.isDynamicT7) {
+        tempStreak++;
+        longestStreak = Math.max(longestStreak, tempStreak);
+      } else {
+        tempStreak = 0;
+      }
+    });
+
+    // Count status changes
+    let statusChanges = 0;
+    for (let i = 1; i < timeline.length; i++) {
+      if (timeline[i].category !== timeline[i - 1].category) {
+        statusChanges++;
+      }
+    }
+
+    return {
+      totalDays: timeline.length,
+      activeDays,
+      currentStreak,
+      longestStreak,
+      statusChanges,
+      currentStatus: timeline[timeline.length - 1]
+    };
   };
 
   console.log('Rendering main page, analysis:', analysis);
@@ -1724,7 +1822,27 @@ export default function PACSAnalytics() {
                     {filteredData().slice(0, 200).map((p, i) => (
                       <tr key={i} style={{ borderTop: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '14px 16px', fontSize: '14px', color: '#111', fontWeight: '500' }}>
-                          {p.name}
+                          <button
+                            onClick={() => {
+                              setSelectedPACS(p);
+                              setIsTimelineDialogOpen(true);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#2563eb',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              fontWeight: '500',
+                              fontSize: '14px',
+                              padding: '0',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#1e40af'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#2563eb'}
+                          >
+                            {p.name}
+                          </button>
                         </td>
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
                           {p.district}
@@ -1825,6 +1943,155 @@ export default function PACSAnalytics() {
             </div>
           </div>
         )}
+
+        {/* PACS Timeline Dialog */}
+        <Dialog open={isTimelineDialogOpen} onOpenChange={setIsTimelineDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">
+                {selectedPACS?.name || 'PACS Timeline'}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedPACS?.district && `District: ${selectedPACS.district} • `}
+                Activity timeline for the last {allSnapshots.length} days
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedPACS && (() => {
+              const timeline = buildPACSTimeline(selectedPACS.id);
+              const stats = getTimelineStats(timeline);
+
+              if (!stats) {
+                return (
+                  <div className="text-center py-12 text-gray-500">
+                    No timeline data available for this PACS
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {/* Statistics */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-xs text-gray-500 mb-1">Current Status</div>
+                      <div className="text-sm font-semibold" style={{ color: getCategoryColor(stats.currentStatus.category) }}>
+                        {stats.currentStatus.categoryLabel}
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="text-xs text-gray-500 mb-1">Active Days</div>
+                      <div className="text-lg font-semibold text-blue-600">
+                        {stats.activeDays}/{stats.totalDays}
+                      </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <div className="text-xs text-gray-500 mb-1">Current Streak</div>
+                      <div className="text-lg font-semibold text-green-600">
+                        {stats.currentStreak} days
+                      </div>
+                    </div>
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <div className="text-xs text-gray-500 mb-1">Longest Streak</div>
+                      <div className="text-lg font-semibold text-purple-600">
+                        {stats.longestStreak} days
+                      </div>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-4">
+                      <div className="text-xs text-gray-500 mb-1">Status Changes</div>
+                      <div className="text-lg font-semibold text-amber-600">
+                        {stats.statusChanges}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visual Timeline */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Activity Timeline</h3>
+                    <div className="flex gap-1 overflow-x-auto pb-2">
+                      {timeline.map((day, index) => (
+                        <div
+                          key={index}
+                          className="relative group flex-shrink-0"
+                          style={{
+                            width: '32px',
+                            height: '80px',
+                            backgroundColor: getCategoryColor(day.category),
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {/* Tooltip on hover */}
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                            <div className="font-semibold">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                            <div>{day.categoryLabel}</div>
+                            {day.lastDayEnd && <div className="text-gray-300">Last: {day.lastDayEnd}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Status Legend</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('dynamic-t1'), borderRadius: '4px' }}></div>
+                        <span>Dynamic (T-1)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('dynamic-t7'), borderRadius: '4px' }}></div>
+                        <span>Dynamic (T-7)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('new'), borderRadius: '4px' }}></div>
+                        <span>New PACS</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('consistent'), borderRadius: '4px' }}></div>
+                        <span>Consistent</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('dropped'), borderRadius: '4px' }}></div>
+                        <span>Dropped</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('inactive'), borderRadius: '4px' }}></div>
+                        <span>Inactive</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Change Log */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Recent Activity</h3>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {timeline.slice().reverse().slice(0, 10).map((day, index) => (
+                        <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg text-sm">
+                          <div className="flex items-center gap-3">
+                            <div style={{ width: '12px', height: '12px', backgroundColor: getCategoryColor(day.category), borderRadius: '2px' }}></div>
+                            <span className="text-gray-600">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="font-medium" style={{ color: getCategoryColor(day.category) }}>
+                              {day.categoryLabel}
+                            </span>
+                            {day.lastDayEnd && (
+                              <span className="text-xs text-gray-500">
+                                Last: {day.lastDayEnd}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
