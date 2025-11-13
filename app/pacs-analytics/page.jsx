@@ -20,6 +20,7 @@ export default function PACSAnalytics() {
   const [filterDistrict, setFilterDistrict] = useState('all');
   const [allSnapshots, setAllSnapshots] = useState([]);
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
+  const [isUploadExpanded, setIsUploadExpanded] = useState(false);
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -922,57 +923,97 @@ export default function PACSAnalytics() {
           </div>
         )}
 
-        {/* Upload Section - Always visible */}
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '32px', backgroundColor: 'white', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '700' }}>Upload CSV Report</h2>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <label style={{
-                padding: '8px 16px',
-                backgroundColor: '#dbeafe',
-                color: '#1e40af',
-                border: '1px solid #93c5fd',
-                borderRadius: '8px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                fontWeight: '500',
-                display: 'inline-block'
-              }}>
-                📦 Bulk Upload (Multiple Files)
-                <input
-                  type="file"
-                  accept=".csv"
-                  multiple
-                  onChange={handleBulkUpload}
-                  disabled={loading}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              {analysis && (
-                <button
-                  onClick={() => {
-                    setAnalysis(null);
-                    setTodayFile(null);
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    setSelectedDate(yesterday.toISOString().split('T')[0]);
-                  }}
-                  style={{
+        {/* Upload Section - Collapsible */}
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          marginBottom: '24px',
+          overflow: 'hidden'
+        }}>
+          {/* Accordion Header */}
+          <button
+            onClick={() => setIsUploadExpanded(!isUploadExpanded)}
+            style={{
+              width: '100%',
+              padding: '16px 20px',
+              backgroundColor: isUploadExpanded ? '#f9fafb' : 'white',
+              border: 'none',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '18px' }}>📤</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'left' }}>
+                  Upload CSV Report
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
+                  {isUploadExpanded ? 'Click to hide upload section' : 'Click to upload or analyze CSV reports'}
+                </div>
+              </div>
+            </div>
+            <span style={{ fontSize: '20px', color: '#6b7280', transition: 'transform 0.2s', transform: isUploadExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              ▼
+            </span>
+          </button>
+
+          {/* Accordion Content */}
+          {isUploadExpanded && (
+            <div style={{ padding: '32px', borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: '700' }}>Upload Options</h2>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <label style={{
                     padding: '8px 16px',
-                    backgroundColor: '#fee2e2',
-                    color: '#991b1b',
-                    border: '1px solid #fecaca',
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af',
+                    border: '1px solid #93c5fd',
                     borderRadius: '8px',
                     fontSize: '13px',
                     cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
-                >
-                  🗑️ Clear & Upload New
-                </button>
-              )}
-            </div>
-          </div>
+                    fontWeight: '500',
+                    display: 'inline-block'
+                  }}>
+                    📦 Bulk Upload (Multiple Files)
+                    <input
+                      type="file"
+                      accept=".csv"
+                      multiple
+                      onChange={handleBulkUpload}
+                      disabled={loading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  {analysis && (
+                    <button
+                      onClick={() => {
+                        setAnalysis(null);
+                        setTodayFile(null);
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        setSelectedDate(yesterday.toISOString().split('T')[0]);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#fee2e2',
+                        color: '#991b1b',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        fontWeight: '500'
+                      }}
+                    >
+                      🗑️ Clear & Upload New
+                    </button>
+                  )}
+                </div>
+              </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
@@ -1064,6 +1105,8 @@ export default function PACSAnalytics() {
                 ⚠️ {error}
               </div>
             )}
+            </div>
+          )}
         </div>
 
         {/* Results */}
