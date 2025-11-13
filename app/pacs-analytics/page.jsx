@@ -1071,6 +1071,16 @@ export default function PACSAnalytics() {
                       }}>
                         DAYS AGO
                       </th>
+                      <th style={{
+                        padding: '14px 16px',
+                        textAlign: 'left',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#6b7280',
+                        textTransform: 'uppercase'
+                      }}>
+                        REASON
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1110,6 +1120,41 @@ export default function PACSAnalytics() {
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
                           {p.daysSinceLastDayEnd === 0 ? 'Today' :
                            p.daysSinceLastDayEnd !== null ? `${p.daysSinceLastDayEnd} days` : '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
+                          {(() => {
+                            // Dynamic T-7 or T-1 PACS
+                            if (p.isDynamicT7 || p.isDynamicT1) {
+                              const daysText = p.daysSinceLastDayEnd === 0 ? 'today' :
+                                               p.daysSinceLastDayEnd === 1 ? '1 day ago' :
+                                               `${p.daysSinceLastDayEnd} days ago`;
+                              return `Day-end on ${p.lastDayEndDate || 'unknown date'} (${daysText})`;
+                            }
+
+                            // New PACS
+                            if (p.category === 'new') {
+                              return 'First appearance in Dynamic T-7';
+                            }
+
+                            // Consistent PACS
+                            if (p.category === 'consistent') {
+                              return 'Continuing activity from previous day';
+                            }
+
+                            // Dropped PACS
+                            if (p.category === 'dropped') {
+                              return 'Previously in T-7, now inactive';
+                            }
+
+                            // Inactive PACS
+                            if (p.category === 'inactive') {
+                              const daysText = p.daysSinceLastDayEnd !== null ?
+                                `${p.daysSinceLastDayEnd} days ago` : 'unknown';
+                              return `Last activity >7 days ago (${daysText})`;
+                            }
+
+                            return '—';
+                          })()}
                         </td>
                       </tr>
                     ))}
