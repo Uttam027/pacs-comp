@@ -453,14 +453,19 @@ export default function PACSAnalytics() {
 
       const matchesDistrict = filterDistrict === 'all' || p.district === filterDistrict;
 
-      // Check both category and primaryCategory for filtering
-      // This allows filtering by dynamic-t7/t1 even when category is new/consistent
-      // Also check isDynamicT7/isDynamicT1 flags for backward compatibility with old data
-      const matchesCategory = filterCategory === 'all' ||
-        p.category === filterCategory ||
-        p.primaryCategory === filterCategory ||
-        (filterCategory === 'dynamic-t7' && p.isDynamicT7) ||
-        (filterCategory === 'dynamic-t1' && p.isDynamicT1);
+      // Special handling for dynamic-t7 and dynamic-t1 filters
+      // These should match based on the T-7/T-1 flags, not the category
+      let matchesCategory;
+      if (filterCategory === 'dynamic-t7') {
+        matchesCategory = p.isDynamicT7 === true;
+      } else if (filterCategory === 'dynamic-t1') {
+        matchesCategory = p.isDynamicT1 === true;
+      } else if (filterCategory === 'all') {
+        matchesCategory = true;
+      } else {
+        // For other categories (new, consistent, dropped, inactive), match by category
+        matchesCategory = p.category === filterCategory;
+      }
 
       return matchesSearch && matchesCategory && matchesDistrict;
     });
