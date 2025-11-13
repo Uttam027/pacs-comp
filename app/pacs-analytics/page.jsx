@@ -120,8 +120,28 @@ export default function PACSAnalytics() {
   };
 
   const extractDateFromFilename = (filename) => {
-    const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
-    return match ? match[1] : null;
+    // Try YYYY-MM-DD format first
+    let match = filename.match(/(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+
+    // Try DDMMYYYY format (e.g., 01112025)
+    match = filename.match(/(\d{8})/);
+    if (match) {
+      const dateStr = match[1];
+      // Parse as DDMMYYYY
+      const day = dateStr.substring(0, 2);
+      const month = dateStr.substring(2, 4);
+      const year = dateStr.substring(4, 8);
+
+      // Validate the date is reasonable
+      if (parseInt(day) > 0 && parseInt(day) <= 31 &&
+          parseInt(month) > 0 && parseInt(month) <= 12 &&
+          parseInt(year) >= 2020 && parseInt(year) <= 2030) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    return null;
   };
 
   const parseDateString = (dateStr) => {
