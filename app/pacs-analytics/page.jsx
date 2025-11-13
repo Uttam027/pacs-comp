@@ -446,6 +446,21 @@ export default function PACSAnalytics() {
   const filteredData = () => {
     if (!analysis) return [];
 
+    // Debug: Log first PACS to see data structure
+    if (analysis.results && analysis.results.length > 0 && filterCategory !== 'all') {
+      console.log('🔍 Filter Debug:', {
+        filterCategory,
+        firstPACS: {
+          name: analysis.results[0].name,
+          category: analysis.results[0].category,
+          primaryCategory: analysis.results[0].primaryCategory,
+          isDynamicT7: analysis.results[0].isDynamicT7,
+          isDynamicT1: analysis.results[0].isDynamicT1
+        },
+        totalResults: analysis.results.length
+      });
+    }
+
     return analysis.results.filter(p => {
       const matchesSearch = !searchTerm ||
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
