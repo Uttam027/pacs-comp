@@ -795,12 +795,39 @@ export default function PACSAnalytics() {
 
         {/* Header */}
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: '#111' }}>
-            PACS Analytics (T-7 Classification)
-          </h1>
-          <p style={{ color: '#6b7280', fontSize: '15px', marginBottom: '16px' }}>
-            Track Dynamic Day End activity and PACS status changes
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1', minWidth: '280px' }}>
+              <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: '#111' }}>
+                PACS Analytics (T-7 Classification)
+              </h1>
+              <p style={{ color: '#6b7280', fontSize: '15px', marginBottom: '0' }}>
+                Track Dynamic Day End activity and PACS status changes
+              </p>
+            </div>
+
+            {/* Snapshot Date Box */}
+            {analysis && analysis.snapshotDate && (
+              <div style={{
+                padding: '16px 20px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '10px',
+                minWidth: '220px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#166534', marginBottom: '4px', fontWeight: '500' }}>
+                  📅 Snapshot Date
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: '600', color: '#15803d', margin: '0' }}>
+                  {new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Collapsible Info Section */}
           <div style={{
@@ -1348,28 +1375,7 @@ export default function PACSAnalytics() {
         {analysis && analysis.stats && analysis.results && (
           <div>
             {/* Top action bar */}
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <div style={{
-                flex: '1',
-                minWidth: '250px',
-                padding: '16px 20px',
-                backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '10px'
-              }}>
-                <p style={{ fontSize: '12px', color: '#166534', marginBottom: '4px', fontWeight: '500' }}>
-                  📅 Snapshot Date
-                </p>
-                <p style={{ fontSize: '16px', fontWeight: '600', color: '#15803d' }}>
-                  {analysis.snapshotDate ? new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  }) : 'N/A'}
-                </p>
-              </div>
-
+            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <button
                 onClick={() => {
                   setAnalysis(null);
