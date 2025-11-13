@@ -121,3 +121,39 @@ export async function POST(request: Request) {
     );
   }
 }
+
+// DELETE endpoint - delete a specific snapshot
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
+
+    if (!date) {
+      return NextResponse.json(
+        { error: 'Date parameter is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!redis) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 503 }
+      );
+    }
+
+    const key = `${DAILY_KEY_PREFIX}:${date}`;
+    await redis.del(key);
+
+    return NextResponse.json(
+      { message: 'Snapshot deleted successfully', date },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error deleting daily data:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete daily data' },
+      { status: 500 }
+    );
+  }
+}

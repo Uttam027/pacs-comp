@@ -2,7 +2,14 @@
 import React, { useState, useEffect } from 'react';
 
 export default function PACSAnalytics() {
-  const [selectedDate, setSelectedDate] = useState('');
+  // Initialize with yesterday's date
+  const getYesterdayDate = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday.toISOString().split('T')[0];
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getYesterdayDate());
   const [todayFile, setTodayFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -14,8 +21,11 @@ export default function PACSAnalytics() {
   const [allSnapshots, setAllSnapshots] = useState([]);
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
+    // Default to yesterday's date (since reports are for yesterday's day-end)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    setSelectedDate(yesterdayStr);
     loadLatestAnalysis();
   }, []);
 
@@ -33,8 +43,12 @@ export default function PACSAnalytics() {
       }
 
       if (result.data && result.data.length > 0) {
+        // Always load the most recent snapshot
         const latest = result.data[0];
-        console.log('Latest snapshot:', latest);
+
+        console.log('📅 Most recent snapshot date:', latest.date);
+        console.log('Loading snapshot:', latest);
+
         if (latest && latest.data) {
           const data = latest.data;
 
@@ -45,7 +59,10 @@ export default function PACSAnalytics() {
           } else if (data.results && data.stats) {
             // New data structure
             setAnalysis(data);
+            // Update selectedDate to match the loaded snapshot
+            setSelectedDate(latest.date);
             console.log('Analysis set (new structure):', data);
+            console.log('Selected date updated to:', latest.date);
           }
         }
       } else {
@@ -111,23 +128,31 @@ export default function PACSAnalytics() {
     // Handle different date formats: DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD
     if (!dateStr) return null;
 
-    // Try DD-MM-YYYY or DD/MM/YYYY format (common in Indian data)
-    const parts = dateStr.split(/[-/]/);
-    if (parts.length === 3) {
-      const [first, second, third] = parts;
+    try {
+      // Ensure dateStr is a string
+      const dateString = typeof dateStr === 'string' ? dateStr : String(dateStr);
 
-      // If third part is 4 digits, it's likely YYYY
-      if (third.length === 4) {
-        // DD-MM-YYYY format - convert strings to integers
-        return new Date(parseInt(third), parseInt(second) - 1, parseInt(first));
-      } else if (first.length === 4) {
-        // YYYY-MM-DD format - convert strings to integers
-        return new Date(parseInt(first), parseInt(second) - 1, parseInt(third));
+      // Try DD-MM-YYYY or DD/MM/YYYY format (common in Indian data)
+      const parts = dateString.split(/[-/]/);
+      if (parts.length === 3) {
+        const [first, second, third] = parts;
+
+        // If third part is 4 digits, it's likely YYYY
+        if (third.length === 4) {
+          // DD-MM-YYYY format - convert strings to integers
+          return new Date(parseInt(third), parseInt(second) - 1, parseInt(first));
+        } else if (first.length === 4) {
+          // YYYY-MM-DD format - convert strings to integers
+          return new Date(parseInt(first), parseInt(second) - 1, parseInt(third));
+        }
       }
-    }
 
-    // Fallback to default parsing
-    return new Date(dateStr);
+      // Fallback to default parsing
+      return new Date(dateString);
+    } catch (error) {
+      console.error('Error parsing date:', dateStr, error);
+      return null;
+    }
   };
 
   const calculateDaysBetween = (date1, date2) => {
@@ -389,6 +414,30 @@ export default function PACSAnalytics() {
     }
   };
 
+  const handleDeleteSnapshot = async (date) => {
+    if (!confirm(`Delete snapshot for ${date}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/pacs-analytics/daily?date=${date}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        console.log(`✅ Deleted snapshot for ${date}`);
+        // Reload data
+        await loadLatestAnalysis();
+      } else {
+        console.error('Failed to delete snapshot');
+        alert('Failed to delete snapshot');
+      }
+    } catch (err) {
+      console.error('Error deleting snapshot:', err);
+      alert('Error deleting snapshot');
+    }
+  };
+
   const filteredData = () => {
     if (!analysis) return [];
 
@@ -556,14 +605,35 @@ export default function PACSAnalytics() {
                     borderRadius: '6px',
                     fontSize: '13px',
                     color: '#374151',
-                    border: '1px solid #d1d5db'
+                    border: '1px solid #d1d5db',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
                 >
-                  {new Date(snapshot.date).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
+                  <span>
+                    {new Date(snapshot.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteSnapshot(snapshot.date)}
+                    style={{
+                      padding: '2px 6px',
+                      backgroundColor: '#fee2e2',
+                      color: '#991b1b',
+                      border: '1px solid #fecaca',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                    title="Delete this snapshot"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
@@ -582,10 +652,34 @@ export default function PACSAnalytics() {
           </div>
         )}
 
-        {/* Upload Section */}
-        {(!analysis || !analysis.stats || !analysis.results) && (
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '32px', backgroundColor: 'white', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Upload CSV Report</h2>
+        {/* Upload Section - Always visible */}
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '32px', backgroundColor: 'white', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '700' }}>Upload CSV Report</h2>
+            {analysis && (
+              <button
+                onClick={() => {
+                  setAnalysis(null);
+                  setTodayFile(null);
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setSelectedDate(yesterday.toISOString().split('T')[0]);
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                🗑️ Clear & Upload New
+              </button>
+            )}
+          </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
@@ -593,10 +687,35 @@ export default function PACSAnalytics() {
               </label>
               <input
                 type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value);
+                value={selectedDate || ''}
+                onChange={async (e) => {
+                  const newDate = e?.target?.value;
+
+                  if (!newDate) {
+                    console.log('⚠️ No date selected');
+                    return;
+                  }
+
+                  console.log('📅 Date changed to:', newDate);
+                  setSelectedDate(newDate);
                   setError(null);
+
+                  // Try to load snapshot for this date
+                  try {
+                    const response = await fetch(`/api/pacs-analytics/daily?date=${newDate}`);
+                    const result = await response.json();
+
+                    if (result.data && result.data.results) {
+                      console.log('✅ Loaded snapshot for', newDate);
+                      setAnalysis(result.data);
+                    } else {
+                      console.log('ℹ️ No snapshot found for', newDate);
+                      setAnalysis(null);
+                    }
+                  } catch (err) {
+                    console.error('Error loading snapshot for date:', err);
+                    setAnalysis(null);
+                  }
                 }}
                 max={new Date().toISOString().split('T')[0]}
                 style={{
@@ -652,8 +771,7 @@ export default function PACSAnalytics() {
                 ⚠️ {error}
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* Results */}
         {analysis && analysis.stats && analysis.results && (
