@@ -19,6 +19,7 @@ export default function PACSAnalytics() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDistrict, setFilterDistrict] = useState('all');
   const [allSnapshots, setAllSnapshots] = useState([]);
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false);
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -719,135 +720,175 @@ export default function PACSAnalytics() {
             Track Dynamic Day End activity and PACS status changes
           </p>
 
-          {/* Category Definitions */}
+          {/* Collapsible Info Section */}
           <div style={{
             backgroundColor: 'white',
             border: '1px solid #e5e7eb',
             borderRadius: '12px',
-            padding: '20px 24px',
-            marginBottom: '12px'
+            marginBottom: '12px',
+            overflow: 'hidden'
           }}>
-            <div style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              color: '#111',
-              marginBottom: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span>📊</span>
-              <span>Category Definitions</span>
-            </div>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '16px',
-              fontSize: '12px',
-              lineHeight: '1.6'
-            }}>
-              <div>
-                <div style={{ fontWeight: '600', color: '#0ea5e9', marginBottom: '4px' }}>
-                  💙 Dynamic Day End (T-7)
-                </div>
-                <div style={{ color: '#6b7280' }}>
-                  Last day-end within last 7 days (including snapshot date)
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#06b6d4', marginBottom: '4px' }}>
-                  🔵 Dynamic Day End (T-1)
-                </div>
-                <div style={{ color: '#6b7280' }}>
-                  Last day-end equals snapshot date (most current)
+            {/* Accordion Header */}
+            <button
+              onClick={() => setIsInfoExpanded(!isInfoExpanded)}
+              style={{
+                width: '100%',
+                padding: '16px 20px',
+                backgroundColor: isInfoExpanded ? '#f9fafb' : 'white',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '18px' }}>ℹ️</span>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'left' }}>
+                    Pattern Definitions & Upload History
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
+                    {isInfoExpanded ? 'Click to hide' : `Click to view category definitions${allSnapshots.length > 0 ? ` and ${allSnapshots.length} upload${allSnapshots.length !== 1 ? 's' : ''}` : ''}`}
+                  </div>
                 </div>
               </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#10b981', marginBottom: '4px' }}>
-                  🟢 New PACS
-                </div>
-                <div style={{ color: '#6b7280' }}>
-                  Not in T-7 yesterday, but performed day-end today
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#f59e0b', marginBottom: '4px' }}>
-                  🟡 Consistent PACS
-                </div>
-                <div style={{ color: '#6b7280' }}>
-                  In T-7 list on both current and previous day
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#ef4444', marginBottom: '4px' }}>
-                  🔴 Dropped PACS
-                </div>
-                <div style={{ color: '#6b7280' }}>
-                  Were in T-7 yesterday, but not in current list
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#9ca3af', marginBottom: '4px' }}>
-                  ⚪ Inactive ({'>'}T-7)
-                </div>
-                <div style={{ color: '#6b7280' }}>
-                  Last day-end more than 7 days old
-                </div>
-              </div>
-            </div>
-          </div>
+              <span style={{ fontSize: '20px', color: '#6b7280', transition: 'transform 0.2s', transform: isInfoExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                ▼
+              </span>
+            </button>
 
-          <div style={{ marginTop: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px',
-              display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#15803d', border: '1px solid #bbf7d0' }}>
-              <span>☁️</span>
-              <span style={{ fontWeight: '500' }}>Using Cloud Database (Redis) - Syncs Across Devices</span>
-            </div>
-
-            {allSnapshots.length > 0 && (
-              <div style={{ padding: '8px 12px', backgroundColor: '#ede9fe', borderRadius: '6px',
-                display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#6b21a8', border: '1px solid #c4b5fd' }}>
-                <span>📅</span>
-                <span style={{ fontWeight: '500' }}>{allSnapshots.length} day{allSnapshots.length !== 1 ? 's' : ''} of data uploaded</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Upload History */}
-        {allSnapshots.length > 0 && (
-          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '12px', marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#111' }}>
-              📊 Upload History ({allSnapshots.length} days)
-            </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {allSnapshots.map((snapshot) => (
-                <div
-                  key={snapshot.date}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#f3f4f6',
-                    borderRadius: '6px',
+            {/* Accordion Content */}
+            {isInfoExpanded && (
+              <div style={{ padding: '0 20px 20px 20px', borderTop: '1px solid #e5e7eb' }}>
+                {/* Category Definitions */}
+                <div style={{ paddingTop: '20px' }}>
+                  <div style={{
                     fontSize: '13px',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
+                    fontWeight: '600',
+                    color: '#111',
+                    marginBottom: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px'
-                  }}
-                >
-                  <span>
-                    {new Date(snapshot.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </span>
+                  }}>
+                    <span>📊</span>
+                    <span>Category Definitions</span>
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '16px',
+                    fontSize: '12px',
+                    lineHeight: '1.6'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#0ea5e9', marginBottom: '4px' }}>
+                        💙 Dynamic Day End (T-7)
+                      </div>
+                      <div style={{ color: '#6b7280' }}>
+                        Last day-end within last 7 days (including snapshot date)
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#06b6d4', marginBottom: '4px' }}>
+                        🔵 Dynamic Day End (T-1)
+                      </div>
+                      <div style={{ color: '#6b7280' }}>
+                        Last day-end equals snapshot date (most current)
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#10b981', marginBottom: '4px' }}>
+                        🟢 New PACS
+                      </div>
+                      <div style={{ color: '#6b7280' }}>
+                        Not in T-7 yesterday, but performed day-end today
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#f59e0b', marginBottom: '4px' }}>
+                        🟡 Consistent PACS
+                      </div>
+                      <div style={{ color: '#6b7280' }}>
+                        In T-7 list on both current and previous day
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#ef4444', marginBottom: '4px' }}>
+                        🔴 Dropped PACS
+                      </div>
+                      <div style={{ color: '#6b7280' }}>
+                        Were in T-7 yesterday, but not in current list
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#9ca3af', marginBottom: '4px' }}>
+                        ⚪ Inactive ({'>'}T-7)
+                      </div>
+                      <div style={{ color: '#6b7280' }}>
+                        Last day-end more than 7 days old
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Database Info */}
+                <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px',
+                    display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#15803d', border: '1px solid #bbf7d0' }}>
+                    <span>☁️</span>
+                    <span style={{ fontWeight: '500' }}>Using Cloud Database (Redis) - Syncs Across Devices</span>
+                  </div>
+
+                  {allSnapshots.length > 0 && (
+                    <div style={{ padding: '8px 12px', backgroundColor: '#ede9fe', borderRadius: '6px',
+                      display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#6b21a8', border: '1px solid #c4b5fd' }}>
+                      <span>📅</span>
+                      <span style={{ fontWeight: '500' }}>{allSnapshots.length} day{allSnapshots.length !== 1 ? 's' : ''} of data uploaded</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload History */}
+                {allSnapshots.length > 0 && (
+                  <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
+                    <h3 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '12px', color: '#111', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>📅</span>
+                      <span>Upload History ({allSnapshots.length} days)</span>
+                    </h3>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {allSnapshots.map((snapshot) => (
+                        <div
+                          key={snapshot.date}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          <span>
+                            {new Date(snapshot.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
 
         {/* Info message if no data */}
         {!analysis && (
