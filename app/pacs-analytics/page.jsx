@@ -750,7 +750,7 @@ export default function PACSAnalytics() {
                     Pattern Definitions & Upload History
                   </div>
                   <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
-                    {isInfoExpanded ? 'Click to hide' : `Click to view category definitions${allSnapshots.length > 0 ? ` and ${allSnapshots.length} upload${allSnapshots.length !== 1 ? 's' : ''}` : ''}`}
+                    {isInfoExpanded ? 'Click to hide' : (allSnapshots.length > 0 ? `Click to view category definitions and ${allSnapshots.length} upload${allSnapshots.length !== 1 ? 's' : ''}` : 'Click to view category definitions')}
                   </div>
                 </div>
               </div>
@@ -889,6 +889,7 @@ export default function PACSAnalytics() {
               </div>
             )}
           </div>
+        </div>
 
         {/* Info message if no data */}
         {!analysis && (
