@@ -880,12 +880,24 @@ export default function PACSAnalytics() {
       const jsPDF = jsPDFModule.default;
       console.log('✅ jsPDF constructor:', jsPDF);
 
-      await import('jspdf-autotable');
-      console.log('✅ jspdf-autotable loaded');
+      // Import autoTable - it automatically extends jsPDF prototype
+      const autoTableModule = await import('jspdf-autotable');
+      console.log('✅ jspdf-autotable loaded:', autoTableModule);
 
       console.log('🎨 Creating PDF document...');
       const doc = new jsPDF();
       console.log('✅ PDF document created');
+      console.log('🔍 Checking autoTable availability:', typeof doc.autoTable);
+
+      // If autoTable is not on the instance, try to add it from the module
+      if (!doc.autoTable && autoTableModule.default) {
+        console.log('⚠️ autoTable not found on doc, attempting to attach...');
+        // autoTable should be available as a method after import
+        // Try accessing it from the jsPDF object itself
+        Object.getPrototypeOf(doc).autoTable = autoTableModule.default;
+        console.log('✅ autoTable attached:', typeof doc.autoTable);
+      }
+
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
