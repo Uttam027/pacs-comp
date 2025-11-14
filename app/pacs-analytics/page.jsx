@@ -880,23 +880,13 @@ export default function PACSAnalytics() {
       const jsPDF = jsPDFModule.default;
       console.log('✅ jsPDF constructor:', jsPDF);
 
-      // Import autoTable - it automatically extends jsPDF prototype
-      const autoTableModule = await import('jspdf-autotable');
-      console.log('✅ jspdf-autotable loaded:', autoTableModule);
-
       console.log('🎨 Creating PDF document...');
       const doc = new jsPDF();
       console.log('✅ PDF document created');
-      console.log('🔍 Checking autoTable availability:', typeof doc.autoTable);
 
-      // If autoTable is not on the instance, try to add it from the module
-      if (!doc.autoTable && autoTableModule.default) {
-        console.log('⚠️ autoTable not found on doc, attempting to attach...');
-        // autoTable should be available as a method after import
-        // Try accessing it from the jsPDF object itself
-        Object.getPrototypeOf(doc).autoTable = autoTableModule.default;
-        console.log('✅ autoTable attached:', typeof doc.autoTable);
-      }
+      // Import autoTable function
+      const autoTable = (await import('jspdf-autotable')).default;
+      console.log('✅ autoTable function loaded:', typeof autoTable);
 
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -957,7 +947,7 @@ export default function PACSAnalytics() {
           `${((count / droppedPACS.length) * 100).toFixed(1)}%`
         ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 85,
         head: [['District', 'Dropped PACS', 'Percentage']],
         body: districtData,
@@ -985,7 +975,7 @@ export default function PACSAnalytics() {
         p.daysSinceLastDayEnd !== null ? `${p.daysSinceLastDayEnd} days` : 'N/A'
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 28,
         head: [['PACS ID', 'PACS Name', 'District', 'Last Day End', 'Days Ago']],
         body: pacsData,
