@@ -874,177 +874,177 @@ export default function PACSAnalytics() {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Title
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dropped PACS Report', pageWidth / 2, 20, { align: 'center' });
+      // Title
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dropped PACS Report', pageWidth / 2, 20, { align: 'center' });
 
-    // Snapshot Date
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const snapshotDateStr = new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    doc.text(`Snapshot Date: ${snapshotDateStr}`, pageWidth / 2, 28, { align: 'center' });
+      // Snapshot Date
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const snapshotDateStr = new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      doc.text(`Snapshot Date: ${snapshotDateStr}`, pageWidth / 2, 28, { align: 'center' });
 
-    // Report generation date
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(`Generated: ${new Date().toLocaleString('en-US')}`, pageWidth / 2, 34, { align: 'center' });
-    doc.setTextColor(0);
+      // Report generation date
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(`Generated: ${new Date().toLocaleString('en-US')}`, pageWidth / 2, 34, { align: 'center' });
+      doc.setTextColor(0);
 
-    // Executive Summary Box
-    doc.setFillColor(254, 202, 202); // Light red background
-    doc.rect(14, 40, pageWidth - 28, 30, 'F');
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Executive Summary', 20, 48);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Dropped PACS: ${droppedPACS.length}`, 20, 56);
+      // Executive Summary Box
+      doc.setFillColor(254, 202, 202); // Light red background
+      doc.rect(14, 40, pageWidth - 28, 30, 'F');
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Executive Summary', 20, 48);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Dropped PACS: ${droppedPACS.length}`, 20, 56);
 
-    // District breakdown
-    const districtCounts = {};
-    droppedPACS.forEach(p => {
-      districtCounts[p.district] = (districtCounts[p.district] || 0) + 1;
-    });
-    const topDistricts = Object.entries(districtCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
+      // District breakdown
+      const districtCounts = {};
+      droppedPACS.forEach(p => {
+        districtCounts[p.district] = (districtCounts[p.district] || 0) + 1;
+      });
+      const topDistricts = Object.entries(districtCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
 
-    doc.text(`Top 3 Districts: ${topDistricts.map(d => `${d[0]} (${d[1]})`).join(', ')}`, 20, 64);
+      doc.text(`Top 3 Districts: ${topDistricts.map(d => `${d[0]} (${d[1]})`).join(', ')}`, 20, 64);
 
-    // District-wise Summary Table
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('District-wise Breakdown', 14, 80);
+      // District-wise Summary Table
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('District-wise Breakdown', 14, 80);
 
-    const districtData = Object.entries(districtCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([district, count]) => [
-        district,
-        count,
-        `${((count / droppedPACS.length) * 100).toFixed(1)}%`
+      const districtData = Object.entries(districtCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([district, count]) => [
+          district,
+          count,
+          `${((count / droppedPACS.length) * 100).toFixed(1)}%`
+        ]);
+
+      doc.autoTable({
+        startY: 85,
+        head: [['District', 'Dropped PACS', 'Percentage']],
+        body: districtData,
+        theme: 'grid',
+        headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 40, halign: 'center' },
+          2: { cellWidth: 40, halign: 'center' }
+        }
+      });
+
+      // Detailed PACS List
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Detailed List of Dropped PACS', 14, 20);
+
+      const pacsData = droppedPACS.map(p => [
+        p.id,
+        p.name,
+        p.district,
+        p.lastDayEndDate || 'N/A',
+        p.daysSinceLastDayEnd !== null ? `${p.daysSinceLastDayEnd} days` : 'N/A'
       ]);
 
-    doc.autoTable({
-      startY: 85,
-      head: [['District', 'Dropped PACS', 'Percentage']],
-      body: districtData,
-      theme: 'grid',
-      headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 3 },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 40, halign: 'center' },
-        2: { cellWidth: 40, halign: 'center' }
-      }
-    });
+      doc.autoTable({
+        startY: 28,
+        head: [['PACS ID', 'PACS Name', 'District', 'Last Day End', 'Days Ago']],
+        body: pacsData,
+        theme: 'striped',
+        headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 25, halign: 'center' }
+        },
+        didDrawPage: (data) => {
+          // Footer
+          doc.setFontSize(8);
+          doc.setTextColor(128);
+          doc.text(
+            `Page ${doc.internal.getCurrentPageInfo().pageNumber}`,
+            pageWidth / 2,
+            pageHeight - 10,
+            { align: 'center' }
+          );
+        }
+      });
 
-    // Detailed PACS List
-    doc.addPage();
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Detailed List of Dropped PACS', 14, 20);
+      // Add insights page
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Key Insights & Recommendations', 14, 20);
 
-    const pacsData = droppedPACS.map(p => [
-      p.id,
-      p.name,
-      p.district,
-      p.lastDayEndDate || 'N/A',
-      p.daysSinceLastDayEnd !== null ? `${p.daysSinceLastDayEnd} days` : 'N/A'
-    ]);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      let yPos = 30;
 
-    doc.autoTable({
-      startY: 28,
-      head: [['PACS ID', 'PACS Name', 'District', 'Last Day End', 'Days Ago']],
-      body: pacsData,
-      theme: 'striped',
-      headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 2 },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 70 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 25, halign: 'center' }
-      },
-      didDrawPage: (data) => {
-        // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(128);
-        doc.text(
-          `Page ${doc.internal.getCurrentPageInfo().pageNumber}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: 'center' }
-        );
-      }
-    });
+      doc.setFont('helvetica', 'bold');
+      doc.text('What are "Dropped PACS"?', 14, yPos);
+      yPos += 8;
+      doc.setFont('helvetica', 'normal');
+      const droppedDef = 'Dropped PACS are those that were performing day-end activities within the T-7 window ' +
+        '(last 7 days) on the previous snapshot but are NO LONGER within T-7 on the current snapshot. ' +
+        'This indicates a recent decline in activity.';
+      const droppedDefLines = doc.splitTextToSize(droppedDef, pageWidth - 28);
+      doc.text(droppedDefLines, 14, yPos);
+      yPos += droppedDefLines.length * 5 + 10;
 
-    // Add insights page
-    doc.addPage();
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Key Insights & Recommendations', 14, 20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Recommended Actions:', 14, yPos);
+      yPos += 8;
+      doc.setFont('helvetica', 'normal');
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    let yPos = 30;
+      const actions = [
+        '1. Immediate Follow-up: Contact PACS leadership to understand reasons for activity cessation',
+        '2. Technical Support: Check for system issues, connectivity problems, or training needs',
+        '3. Prioritize High-Impact Districts: Focus on districts with the most dropped PACS',
+        '4. Monitor Recovery: Track if dropped PACS return to T-7 status in coming days',
+        '5. Document Issues: Record common reasons for drops to prevent future occurrences'
+      ];
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('What are "Dropped PACS"?', 14, yPos);
-    yPos += 8;
-    doc.setFont('helvetica', 'normal');
-    const droppedDef = 'Dropped PACS are those that were performing day-end activities within the T-7 window ' +
-      '(last 7 days) on the previous snapshot but are NO LONGER within T-7 on the current snapshot. ' +
-      'This indicates a recent decline in activity.';
-    const droppedDefLines = doc.splitTextToSize(droppedDef, pageWidth - 28);
-    doc.text(droppedDefLines, 14, yPos);
-    yPos += droppedDefLines.length * 5 + 10;
+      actions.forEach(action => {
+        const lines = doc.splitTextToSize(action, pageWidth - 28);
+        doc.text(lines, 14, yPos);
+        yPos += lines.length * 5 + 4;
+      });
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('Recommended Actions:', 14, yPos);
-    yPos += 8;
-    doc.setFont('helvetica', 'normal');
+      yPos += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Priority Districts for Action:', 14, yPos);
+      yPos += 8;
+      doc.setFont('helvetica', 'normal');
 
-    const actions = [
-      '1. Immediate Follow-up: Contact PACS leadership to understand reasons for activity cessation',
-      '2. Technical Support: Check for system issues, connectivity problems, or training needs',
-      '3. Prioritize High-Impact Districts: Focus on districts with the most dropped PACS',
-      '4. Monitor Recovery: Track if dropped PACS return to T-7 status in coming days',
-      '5. Document Issues: Record common reasons for drops to prevent future occurrences'
-    ];
+      topDistricts.forEach(([district, count], index) => {
+        doc.text(`${index + 1}. ${district}: ${count} dropped PACS (${((count / droppedPACS.length) * 100).toFixed(1)}%)`, 20, yPos);
+        yPos += 6;
+      });
 
-    actions.forEach(action => {
-      const lines = doc.splitTextToSize(action, pageWidth - 28);
-      doc.text(lines, 14, yPos);
-      yPos += lines.length * 5 + 4;
-    });
-
-    yPos += 10;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Priority Districts for Action:', 14, yPos);
-    yPos += 8;
-    doc.setFont('helvetica', 'normal');
-
-    topDistricts.forEach(([district, count], index) => {
-      doc.text(`${index + 1}. ${district}: ${count} dropped PACS (${((count / droppedPACS.length) * 100).toFixed(1)}%)`, 20, yPos);
-      yPos += 6;
-    });
-
-    // Footer on insights page
-    doc.setFontSize(8);
-    doc.setTextColor(128);
-    doc.text(
-      `Generated by PACS Analytics System | ${new Date().toLocaleDateString('en-US')}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
+      // Footer on insights page
+      doc.setFontSize(8);
+      doc.setTextColor(128);
+      doc.text(
+        `Generated by PACS Analytics System | ${new Date().toLocaleDateString('en-US')}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
 
       // Save PDF
       const fileName = `Dropped_PACS_Report_${analysis.snapshotDate}.pdf`;
