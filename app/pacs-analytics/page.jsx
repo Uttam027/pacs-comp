@@ -855,10 +855,16 @@ export default function PACSAnalytics() {
 
   // Generate PDF Report for Dropped PACS
   const generateDroppedPACSReport = async () => {
-    if (!analysis || !analysis.results) return;
+    console.log('🔵 Starting PDF generation...');
+
+    if (!analysis || !analysis.results) {
+      console.log('❌ No analysis data');
+      return;
+    }
 
     // Filter for dropped PACS only
     const droppedPACS = analysis.results.filter(p => p.category === 'dropped');
+    console.log(`📊 Found ${droppedPACS.length} dropped PACS`);
 
     if (droppedPACS.length === 0) {
       alert('No dropped PACS to report');
@@ -866,11 +872,20 @@ export default function PACSAnalytics() {
     }
 
     try {
+      console.log('📦 Loading jsPDF library...');
       // Dynamically import jsPDF (client-side only)
-      const jsPDF = (await import('jspdf')).default;
-      await import('jspdf-autotable');
+      const jsPDFModule = await import('jspdf');
+      console.log('✅ jsPDF module loaded:', jsPDFModule);
 
+      const jsPDF = jsPDFModule.default;
+      console.log('✅ jsPDF constructor:', jsPDF);
+
+      await import('jspdf-autotable');
+      console.log('✅ jspdf-autotable loaded');
+
+      console.log('🎨 Creating PDF document...');
       const doc = new jsPDF();
+      console.log('✅ PDF document created');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -1047,13 +1062,18 @@ export default function PACSAnalytics() {
       );
 
       // Save PDF
+      console.log('💾 Saving PDF...');
       const fileName = `Dropped_PACS_Report_${analysis.snapshotDate}.pdf`;
       doc.save(fileName);
+      console.log('✅ PDF saved:', fileName);
 
       alert(`Report generated successfully!\nFile: ${fileName}\nTotal Dropped PACS: ${droppedPACS.length}`);
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF report. Please check the console for details.');
+      console.error('❌ Error generating PDF:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      alert(`Failed to generate PDF report.\n\nError: ${error.message}\n\nPlease check the browser console for details.`);
     }
   };
 
