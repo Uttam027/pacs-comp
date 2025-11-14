@@ -10,8 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 export default function PACSAnalytics() {
   // Initialize with yesterday's date
@@ -856,7 +854,7 @@ export default function PACSAnalytics() {
   };
 
   // Generate PDF Report for Dropped PACS
-  const generateDroppedPACSReport = () => {
+  const generateDroppedPACSReport = async () => {
     if (!analysis || !analysis.results) return;
 
     // Filter for dropped PACS only
@@ -867,9 +865,14 @@ export default function PACSAnalytics() {
       return;
     }
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    try {
+      // Dynamically import jsPDF (client-side only)
+      const jsPDF = (await import('jspdf')).default;
+      await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
     // Title
     doc.setFontSize(20);
@@ -1043,11 +1046,15 @@ export default function PACSAnalytics() {
       { align: 'center' }
     );
 
-    // Save PDF
-    const fileName = `Dropped_PACS_Report_${analysis.snapshotDate}.pdf`;
-    doc.save(fileName);
+      // Save PDF
+      const fileName = `Dropped_PACS_Report_${analysis.snapshotDate}.pdf`;
+      doc.save(fileName);
 
-    alert(`Report generated successfully!\nFile: ${fileName}\nTotal Dropped PACS: ${droppedPACS.length}`);
+      alert(`Report generated successfully!\nFile: ${fileName}\nTotal Dropped PACS: ${droppedPACS.length}`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF report. Please check the console for details.');
+    }
   };
 
   console.log('Rendering main page, analysis:', analysis);
