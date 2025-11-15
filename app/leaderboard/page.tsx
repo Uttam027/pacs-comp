@@ -1,116 +1,186 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trophy, Medal, Award, TrendingUp, Star, Crown, Zap, Target, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, TrendingUp, Star, Crown, Zap, Target, CheckCircle, TrendingDown } from 'lucide-react';
 
-type District = {
-  name: string;
-  pacsAlloted: number;
-  dctCompleted: number;
-  golive: number;
-  onSystemAudit: number;
-  hoc: number;
-  handholding: number;
-  epacs: number;
-  dynamicDayEnd: number;
-};
-
-type DashboardData = {
-  reportDate: string;
-  districts: District[];
-  totals: any;
+type DistrictStats = {
+  district: string;
+  total: number;
+  dynamicT7: number;
+  dynamicT1: number;
+  consistentPACS: number;
+  newPACS: number;
+  droppedPACS: number;
 };
 
 type DistrictScore = {
   name: string;
   score: number;
-  golivePercent: number;
-  epacsPercent: number;
-  dayEndPercent: number;
-  overallPercent: number;
+  t7Percent: number;
+  t1Percent: number;
+  consistentPercent: number;
+  newPACS: number;
+  droppedPACS: number;
+  total: number;
   rank: number;
   badge: 'gold' | 'silver' | 'bronze' | 'participant';
   achievements: string[];
+  performanceGrade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
 };
 
 const CompetitiveLeaderboard = () => {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<'overall' | 'golive' | 'epacs' | 'dayend'>('overall');
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'overall' | 't7' | 't1' | 'consistent' | 'new' | 'dropped'>('overall');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/dashboard');
+        const response = await fetch('/api/pacs-analytics/daily');
         const result = await response.json();
-        if (result.data) {
-          setDashboardData(result.data);
+
+        if (result.data && result.data.length > 0) {
+          const latest = result.data[0];
+          if (latest && latest.data && latest.data.results) {
+            setAnalysisData(latest.data);
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error('Failed to fetch PACS analytics data:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
   }, []);
 
+  const calculateDistrictStats = (): DistrictStats[] => {
+    if (!analysisData || !analysisData.results) return [];
+
+    const districtMap = new Map<string, DistrictStats>();
+
+    analysisData.results.forEach((pacs: any) => {
+      const district = pacs.district;
+      if (!districtMap.has(district)) {
+        districtMap.set(district, {
+          district,
+          total: 0,
+          dynamicT7: 0,
+          dynamicT1: 0,
+          consistentPACS: 0,
+          newPACS: 0,
+          droppedPACS: 0
+        });
+      }
+
+      const stats = districtMap.get(district)!;
+      stats.total++;
+
+      if (pacs.isDynamicT7) stats.dynamicT7++;
+      if (pacs.isDynamicT1) stats.dynamicT1++;
+
+      if (pacs.category === 'Consistent PACS') stats.consistentPACS++;
+      else if (pacs.category === 'New PACS') stats.newPACS++;
+      else if (pacs.category === 'Dropped PACS') stats.droppedPACS++;
+    });
+
+    return Array.from(districtMap.values());
+  };
+
   const calculateDistrictScores = (): DistrictScore[] => {
-    if (!dashboardData) return [];
+    const stats = calculateDistrictStats();
 
-    return dashboardData.districts.map(district => {
-      const golivePercent = (district.golive / district.pacsAlloted) * 100;
-      const epacsPercent = (district.epacs / district.pacsAlloted) * 100;
-      const dayEndPercent = (district.dynamicDayEnd / district.pacsAlloted) * 100;
+    return stats.map(district => {
+      const t7Percent = district.total > 0 ? (district.dynamicT7 / district.total) * 100 : 0;
+      const t1Percent = district.total > 0 ? (district.dynamicT1 / district.total) * 100 : 0;
+      const consistentPercent = district.total > 0 ? (district.consistentPACS / district.total) * 100 : 0;
+      const droppedPercent = district.total > 0 ? (district.droppedPACS / district.total) * 100 : 0;
 
-      // Weighted overall score: GoLive (40%), E-PACS (35%), Day-End (25%)
-      const overallPercent = (golivePercent * 0.4) + (epacsPercent * 0.35) + (dayEndPercent * 0.25);
+      // Scoring formula:
+      // T-7: 35% weight (higher is better)
+      // T-1: 30% weight (higher is better)
+      // Consistent: 25% weight (higher is better)
+      // Dropped: -20% weight (lower is better, so we penalize)
+      // New: +5% bonus (positive indicator)
+
+      const baseScore = (t7Percent * 0.35) + (t1Percent * 0.30) + (consistentPercent * 0.25);
+      const droppedPenalty = droppedPercent * 0.20;
+      const newBonus = district.total > 0 ? (district.newPACS / district.total) * 5 : 0;
+
+      const overallScore = Math.max(0, baseScore - droppedPenalty + newBonus);
 
       const achievements: string[] = [];
 
       // Achievement badges
-      if (golivePercent === 100) achievements.push('100% Go-Live');
-      if (epacsPercent === 100) achievements.push('100% E-PACS');
-      if (dayEndPercent === 100) achievements.push('100% Day-End');
-      if (golivePercent >= 90) achievements.push('Go-Live Champion');
-      if (epacsPercent >= 90) achievements.push('E-PACS Leader');
-      if (dayEndPercent >= 50) achievements.push('Day-End Pioneer');
-      if (overallPercent >= 80) achievements.push('Top Performer');
-      if (district.golive > 200) achievements.push('200+ PACS Live');
+      if (t7Percent >= 95) achievements.push('🏆 T-7 Champion');
+      else if (t7Percent >= 85) achievements.push('⭐ T-7 Leader');
+
+      if (t1Percent >= 95) achievements.push('🎯 T-1 Champion');
+      else if (t1Percent >= 85) achievements.push('💫 T-1 Leader');
+
+      if (consistentPercent >= 80) achievements.push('🔥 Consistency Master');
+      else if (consistentPercent >= 60) achievements.push('✨ Highly Consistent');
+
+      if (droppedPercent === 0 && district.total > 20) achievements.push('💎 Zero Drops');
+      else if (droppedPercent < 5) achievements.push('🛡️ Low Dropout');
+
+      if (district.newPACS >= 10) achievements.push('🚀 Growth Leader');
+      else if (district.newPACS >= 5) achievements.push('📈 Growing');
+
+      if (overallScore >= 90) achievements.push('👑 Elite Performer');
+      else if (overallScore >= 75) achievements.push('⚡ Top Performer');
+
+      // Performance grade
+      let performanceGrade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
+      if (overallScore >= 90) performanceGrade = 'A+';
+      else if (overallScore >= 80) performanceGrade = 'A';
+      else if (overallScore >= 70) performanceGrade = 'B+';
+      else if (overallScore >= 60) performanceGrade = 'B';
+      else if (overallScore >= 50) performanceGrade = 'C';
+      else performanceGrade = 'D';
 
       return {
-        name: district.name,
-        score: Math.round(overallPercent * 10), // Score out of 1000
-        golivePercent,
-        epacsPercent,
-        dayEndPercent,
-        overallPercent,
-        rank: 0, // Will be set after sorting
+        name: district.district,
+        score: Math.round(overallScore * 10),
+        t7Percent,
+        t1Percent,
+        consistentPercent,
+        newPACS: district.newPACS,
+        droppedPACS: district.droppedPACS,
+        total: district.total,
+        rank: 0,
         badge: 'participant',
-        achievements
+        achievements,
+        performanceGrade
       };
     });
   };
 
   const getRankedDistricts = (): DistrictScore[] => {
     const scores = calculateDistrictScores();
-
-    // Sort based on selected category
     let sorted = [...scores];
 
     switch (selectedCategory) {
-      case 'golive':
-        sorted.sort((a, b) => b.golivePercent - a.golivePercent);
+      case 't7':
+        sorted.sort((a, b) => b.t7Percent - a.t7Percent);
         break;
-      case 'epacs':
-        sorted.sort((a, b) => b.epacsPercent - a.epacsPercent);
+      case 't1':
+        sorted.sort((a, b) => b.t1Percent - a.t1Percent);
         break;
-      case 'dayend':
-        sorted.sort((a, b) => b.dayEndPercent - a.dayEndPercent);
+      case 'consistent':
+        sorted.sort((a, b) => b.consistentPercent - a.consistentPercent);
+        break;
+      case 'new':
+        sorted.sort((a, b) => b.newPACS - a.newPACS);
+        break;
+      case 'dropped':
+        sorted.sort((a, b) => a.droppedPACS - b.droppedPACS); // Lower is better
         break;
       default:
-        sorted.sort((a, b) => b.overallPercent - a.overallPercent);
+        sorted.sort((a, b) => b.score - a.score);
     }
 
-    // Assign ranks and badges
     sorted.forEach((district, index) => {
       district.rank = index + 1;
       if (index === 0) district.badge = 'gold';
@@ -126,15 +196,6 @@ const CompetitiveLeaderboard = () => {
     d.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getBadgeColor = (badge: string) => {
-    switch (badge) {
-      case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-300';
-      case 'bronze': return 'bg-orange-100 text-orange-800 border-orange-300';
-      default: return 'bg-blue-50 text-blue-700 border-blue-200';
-    }
-  };
-
   const getBadgeIcon = (badge: string) => {
     switch (badge) {
       case 'gold': return <Crown className="w-5 h-5 text-yellow-600" />;
@@ -144,7 +205,16 @@ const CompetitiveLeaderboard = () => {
     }
   };
 
-  if (!dashboardData) {
+  const getGradeColor = (grade: string) => {
+    if (grade === 'A+') return 'bg-green-100 text-green-800 border-green-300';
+    if (grade === 'A') return 'bg-green-50 text-green-700 border-green-200';
+    if (grade === 'B+') return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (grade === 'B') return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (grade === 'C') return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-red-100 text-red-800 border-red-300';
+  };
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
@@ -155,8 +225,22 @@ const CompetitiveLeaderboard = () => {
     );
   }
 
+  if (!analysisData) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center max-w-md">
+          <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">No Data Available</h2>
+          <p className="text-gray-600 mb-4">Please upload PACS analytics data first.</p>
+          <Link href="/pacs-analytics" className="inline-block px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition">
+            Go to PACS Analytics
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const topThree = filteredDistricts.slice(0, 3);
-  const restOfDistricts = filteredDistricts.slice(3);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -171,9 +255,9 @@ const CompetitiveLeaderboard = () => {
               <div>
                 <div className="flex items-center gap-3">
                   <Trophy className="w-8 h-8 text-yellow-500" />
-                  <h1 className="text-3xl font-bold text-gray-900">District Leaderboard</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">PACS Performance Leaderboard</h1>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Competitive rankings • Updated {dashboardData.reportDate}</p>
+                <p className="text-sm text-gray-500 mt-1">Based on T-7, T-1, Consistency & Growth Metrics</p>
               </div>
             </div>
           </div>
@@ -194,42 +278,68 @@ const CompetitiveLeaderboard = () => {
               </div>
             </button>
             <button
-              onClick={() => setSelectedCategory('golive')}
+              onClick={() => setSelectedCategory('t7')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                selectedCategory === 'golive'
+                selectedCategory === 't7'
                   ? 'bg-green-500 text-white shadow-md'
                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
               <div className="flex items-center gap-2">
                 <Zap size={16} />
-                Go Live
+                T-7 Performance
               </div>
             </button>
             <button
-              onClick={() => setSelectedCategory('epacs')}
+              onClick={() => setSelectedCategory('t1')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                selectedCategory === 'epacs'
-                  ? 'bg-pink-500 text-white shadow-md'
+                selectedCategory === 't1'
+                  ? 'bg-blue-500 text-white shadow-md'
                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
               <div className="flex items-center gap-2">
                 <Target size={16} />
-                E-PACS
+                T-1 Performance
               </div>
             </button>
             <button
-              onClick={() => setSelectedCategory('dayend')}
+              onClick={() => setSelectedCategory('consistent')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                selectedCategory === 'dayend'
+                selectedCategory === 'consistent'
                   ? 'bg-cyan-500 text-white shadow-md'
                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
               <div className="flex items-center gap-2">
                 <CheckCircle size={16} />
-                Dynamic Day-End
+                Consistency
+              </div>
+            </button>
+            <button
+              onClick={() => setSelectedCategory('new')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                selectedCategory === 'new'
+                  ? 'bg-pink-500 text-white shadow-md'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp size={16} />
+                New PACS
+              </div>
+            </button>
+            <button
+              onClick={() => setSelectedCategory('dropped')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                selectedCategory === 'dropped'
+                  ? 'bg-red-500 text-white shadow-md'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <TrendingDown size={16} />
+                Dropped (Less is Better)
               </div>
             </button>
           </div>
@@ -265,12 +375,14 @@ const CompetitiveLeaderboard = () => {
                   <h3 className="font-bold text-lg text-gray-900 mb-2">{topThree[1].name}</h3>
                   <div className="text-2xl font-bold text-gray-800 mb-1">
                     {selectedCategory === 'overall' && `${topThree[1].score} pts`}
-                    {selectedCategory === 'golive' && `${topThree[1].golivePercent.toFixed(1)}%`}
-                    {selectedCategory === 'epacs' && `${topThree[1].epacsPercent.toFixed(1)}%`}
-                    {selectedCategory === 'dayend' && `${topThree[1].dayEndPercent.toFixed(1)}%`}
+                    {selectedCategory === 't7' && `${topThree[1].t7Percent.toFixed(1)}%`}
+                    {selectedCategory === 't1' && `${topThree[1].t1Percent.toFixed(1)}%`}
+                    {selectedCategory === 'consistent' && `${topThree[1].consistentPercent.toFixed(1)}%`}
+                    {selectedCategory === 'new' && `${topThree[1].newPACS} PACS`}
+                    {selectedCategory === 'dropped' && `${topThree[1].droppedPACS} PACS`}
                   </div>
-                  <div className="text-xs text-gray-600">
-                    {topThree[1].achievements.slice(0, 2).join(' • ')}
+                  <div className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-bold border-2 ${getGradeColor(topThree[1].performanceGrade)}`}>
+                    Grade: {topThree[1].performanceGrade}
                   </div>
                 </div>
               </div>
@@ -287,9 +399,14 @@ const CompetitiveLeaderboard = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-3">{topThree[0].name}</h3>
                   <div className="text-3xl font-bold text-yellow-800 mb-2">
                     {selectedCategory === 'overall' && `${topThree[0].score} pts`}
-                    {selectedCategory === 'golive' && `${topThree[0].golivePercent.toFixed(1)}%`}
-                    {selectedCategory === 'epacs' && `${topThree[0].epacsPercent.toFixed(1)}%`}
-                    {selectedCategory === 'dayend' && `${topThree[0].dayEndPercent.toFixed(1)}%`}
+                    {selectedCategory === 't7' && `${topThree[0].t7Percent.toFixed(1)}%`}
+                    {selectedCategory === 't1' && `${topThree[0].t1Percent.toFixed(1)}%`}
+                    {selectedCategory === 'consistent' && `${topThree[0].consistentPercent.toFixed(1)}%`}
+                    {selectedCategory === 'new' && `${topThree[0].newPACS} PACS`}
+                    {selectedCategory === 'dropped' && `${topThree[0].droppedPACS} PACS`}
+                  </div>
+                  <div className={`inline-block mt-3 px-4 py-2 rounded-full text-base font-bold border-2 ${getGradeColor(topThree[0].performanceGrade)}`}>
+                    Grade: {topThree[0].performanceGrade}
                   </div>
                   <div className="flex flex-wrap gap-1 justify-center mt-3">
                     {topThree[0].achievements.slice(0, 3).map((achievement, idx) => (
@@ -313,12 +430,14 @@ const CompetitiveLeaderboard = () => {
                   <h3 className="font-bold text-lg text-gray-900 mb-2">{topThree[2].name}</h3>
                   <div className="text-2xl font-bold text-orange-800 mb-1">
                     {selectedCategory === 'overall' && `${topThree[2].score} pts`}
-                    {selectedCategory === 'golive' && `${topThree[2].golivePercent.toFixed(1)}%`}
-                    {selectedCategory === 'epacs' && `${topThree[2].epacsPercent.toFixed(1)}%`}
-                    {selectedCategory === 'dayend' && `${topThree[2].dayEndPercent.toFixed(1)}%`}
+                    {selectedCategory === 't7' && `${topThree[2].t7Percent.toFixed(1)}%`}
+                    {selectedCategory === 't1' && `${topThree[2].t1Percent.toFixed(1)}%`}
+                    {selectedCategory === 'consistent' && `${topThree[2].consistentPercent.toFixed(1)}%`}
+                    {selectedCategory === 'new' && `${topThree[2].newPACS} PACS`}
+                    {selectedCategory === 'dropped' && `${topThree[2].droppedPACS} PACS`}
                   </div>
-                  <div className="text-xs text-gray-600">
-                    {topThree[2].achievements.slice(0, 2).join(' • ')}
+                  <div className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-bold border-2 ${getGradeColor(topThree[2].performanceGrade)}`}>
+                    Grade: {topThree[2].performanceGrade}
                   </div>
                 </div>
               </div>
@@ -326,10 +445,13 @@ const CompetitiveLeaderboard = () => {
           </div>
         )}
 
-        {/* Full Rankings */}
+        {/* Full Rankings Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 className="text-lg font-bold text-gray-900">Full Rankings</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Scoring: T-7 (35%), T-1 (30%), Consistency (25%), Growth bonus (+5%), Dropped penalty (-20%)
+            </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -337,10 +459,13 @@ const CompetitiveLeaderboard = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Rank</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">District</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Grade</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Score</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Go Live</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">E-PACS</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Day-End</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">T-7</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">T-1</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Consistent</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">New</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Dropped</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Achievements</th>
                 </tr>
               </thead>
@@ -360,18 +485,30 @@ const CompetitiveLeaderboard = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{district.name}</div>
+                      <div className="text-xs text-gray-500">{district.total} total PACS</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold border ${getGradeColor(district.performanceGrade)}`}>
+                        {district.performanceGrade}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="font-bold text-purple-600">{district.score}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="text-sm font-medium text-green-600">{district.golivePercent.toFixed(1)}%</div>
+                      <div className="text-sm font-medium text-green-600">{district.t7Percent.toFixed(1)}%</div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="text-sm font-medium text-pink-600">{district.epacsPercent.toFixed(1)}%</div>
+                      <div className="text-sm font-medium text-blue-600">{district.t1Percent.toFixed(1)}%</div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="text-sm font-medium text-cyan-600">{district.dayEndPercent.toFixed(1)}%</div>
+                      <div className="text-sm font-medium text-cyan-600">{district.consistentPercent.toFixed(1)}%</div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="text-sm font-medium text-pink-600">{district.newPACS}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="text-sm font-medium text-red-600">{district.droppedPACS}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
