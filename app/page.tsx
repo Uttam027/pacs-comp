@@ -270,27 +270,67 @@ const PACSProgressDashboard = () => {
         for (const districtName of districtNames) {
           if (row.includes(districtName)) {
             const numbers = row.match(/-?\d+/g);
-            if (numbers && numbers.length >= 8) { // Reduced threshold for flexibility
+            if (numbers && numbers.length >= 8) {
               const nums = numbers.map(n => parseInt(n));
 
               // Helper function to safely get value at index
               const getVal = (idx: number) => (nums[idx] !== undefined ? nums[idx] : 0);
 
+              // Try multiple index patterns based on array length
+              let indices;
+              if (nums.length >= 25) {
+                // Standard format with all columns
+                indices = {
+                  pacsAlloted: 1,
+                  dctCompleted: 3,
+                  golive: 6,
+                  onSystemAudit: 12,
+                  hoc: 15,
+                  handholding: 18,
+                  epacs: 21,
+                  dynamicDayEnd: 24
+                };
+              } else if (nums.length >= 20 && nums.length < 25) {
+                // Shorter format - adjust indices
+                indices = {
+                  pacsAlloted: 1,
+                  dctCompleted: 3,
+                  golive: 5,
+                  onSystemAudit: 10,
+                  hoc: 13,
+                  handholding: 15,
+                  epacs: 17,
+                  dynamicDayEnd: 19
+                };
+              } else {
+                // Very short format - minimal columns
+                indices = {
+                  pacsAlloted: 1,
+                  dctCompleted: 2,
+                  golive: 3,
+                  onSystemAudit: 4,
+                  hoc: 5,
+                  handholding: 6,
+                  epacs: 7,
+                  dynamicDayEnd: 8
+                };
+              }
+
               const districtData = {
                 name: districtName,
-                pacsAlloted: getVal(1),
-                dctCompleted: getVal(3),
-                golive: getVal(6),
-                onSystemAudit: getVal(12),
-                hoc: getVal(15),
-                handholding: getVal(18),
-                epacs: getVal(21),
-                dynamicDayEnd: getVal(24)
+                pacsAlloted: getVal(indices.pacsAlloted),
+                dctCompleted: getVal(indices.dctCompleted),
+                golive: getVal(indices.golive),
+                onSystemAudit: getVal(indices.onSystemAudit),
+                hoc: getVal(indices.hoc),
+                handholding: getVal(indices.handholding),
+                epacs: getVal(indices.epacs),
+                dynamicDayEnd: getVal(indices.dynamicDayEnd)
               };
 
-              console.log(`${districtName}: EPACS=${getVal(21)}, Array length=${numbers.length}`);
-              console.log(`  Indices -> [1]:${getVal(1)} [3]:${getVal(3)} [6]:${getVal(6)} [12]:${getVal(12)} [15]:${getVal(15)} [18]:${getVal(18)} [21]:${getVal(21)} [24]:${getVal(24)}`);
-              console.log(`  All numbers:`, nums);
+              console.log(`${districtName}: Array length=${numbers.length}, EPACS@${indices.epacs}=${getVal(indices.epacs)}`);
+              console.log(`  Values -> PACS:${districtData.pacsAlloted} DCT:${districtData.dctCompleted} GoLive:${districtData.golive} Audit:${districtData.onSystemAudit} HoC:${districtData.hoc} Hand:${districtData.handholding} EPACS:${districtData.epacs} DDE:${districtData.dynamicDayEnd}`);
+              console.log(`  All numbers [${nums.length}]:`, nums);
 
               districts.push(districtData);
             } else {
