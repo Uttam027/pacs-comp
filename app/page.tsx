@@ -280,14 +280,15 @@ const PACSProgressDashboard = () => {
               let indices;
               if (nums.length >= 25) {
                 // Standard format - based on actual PDF structure
+                // Verified with Jaisalmer: PACS=58@2, DCT=51@3, GoLive=26@6, Audit=5@11, HoC=20@14, Hand=22@17, EPACS=19@20, DDE=20@23
                 indices = {
-                  pacsAlloted: 3,
-                  dctCompleted: 5,
-                  golive: 11,
-                  onSystemAudit: 21,
-                  hoc: 13,
+                  pacsAlloted: 2,
+                  dctCompleted: 3,
+                  golive: 6,
+                  onSystemAudit: 11,
+                  hoc: 14,
                   handholding: 17,
-                  epacs: 19,
+                  epacs: 20,
                   dynamicDayEnd: 23
                 };
               } else if (nums.length >= 20 && nums.length < 25) {
