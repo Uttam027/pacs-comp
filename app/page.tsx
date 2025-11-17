@@ -270,20 +270,32 @@ const PACSProgressDashboard = () => {
         for (const districtName of districtNames) {
           if (row.includes(districtName)) {
             const numbers = row.match(/-?\d+/g);
-            if (numbers && numbers.length >= 20) {
+            if (numbers && numbers.length >= 8) { // Reduced threshold for flexibility
               const nums = numbers.map(n => parseInt(n));
-              
-              districts.push({
+
+              // Helper function to safely get value at index
+              const getVal = (idx: number) => (nums[idx] !== undefined ? nums[idx] : 0);
+
+              const districtData = {
                 name: districtName,
-                pacsAlloted: nums[1] || 0,
-                dctCompleted: nums[3] || 0,
-                golive: nums[6] || 0,
-                onSystemAudit: nums[12] || 0,
-                hoc: nums[15] || 0,
-                handholding: nums[18] || 0,
-                epacs: nums[21] || 0,
-                dynamicDayEnd: nums[24] || 0
-              });
+                pacsAlloted: getVal(1),
+                dctCompleted: getVal(3),
+                golive: getVal(6),
+                onSystemAudit: getVal(12),
+                hoc: getVal(15),
+                handholding: getVal(18),
+                epacs: getVal(21),
+                dynamicDayEnd: getVal(24)
+              };
+
+              console.log(`${districtName}: EPACS=${getVal(21)}, Array length=${numbers.length}`);
+              console.log(`  Indices -> [1]:${getVal(1)} [3]:${getVal(3)} [6]:${getVal(6)} [12]:${getVal(12)} [15]:${getVal(15)} [18]:${getVal(18)} [21]:${getVal(21)} [24]:${getVal(24)}`);
+              console.log(`  All numbers:`, nums);
+
+              districts.push(districtData);
+            } else {
+              console.warn(`⚠️ ${districtName}: Not enough numbers (found ${numbers?.length || 0}, need ≥8)`);
+              if (numbers) console.log(`   Available numbers:`, numbers);
             }
             break;
           }
@@ -304,6 +316,11 @@ const PACSProgressDashboard = () => {
         epacs: districts.reduce((sum, d) => sum + d.epacs, 0),
         dynamicDayEnd: districts.reduce((sum, d) => sum + d.dynamicDayEnd, 0)
       };
+
+      console.log(`\n📊 PARSING SUMMARY:`);
+      console.log(`Districts parsed: ${districts.length}/29`);
+      console.log(`Total EPACS calculated: ${totals.epacs}`);
+      console.log(`Missing districts: ${29 - districts.length}`);
 
       const newData = { reportDate, districts, totals };
       setUploadStatus(`✓ Loaded ${districts.length} districts`);
