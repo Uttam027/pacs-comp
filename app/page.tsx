@@ -279,15 +279,15 @@ const PACSProgressDashboard = () => {
               // Try multiple index patterns based on array length
               let indices;
               if (nums.length >= 25) {
-                // Standard format - based on actual PDF structure
-                // Verified with Jaisalmer: PACS=58@2, DCT=51@3, GoLive=26@6, Audit=5@11, HoC=20@14, Hand=22@17, EPACS=19@20, DDE=20@23
+                // Standard format - Pattern: [S.No, Value, LastDay, CurrentDay, Progress, ...]
+                // Verified with PDF: PACS@1, DCT@3, GoLive@6, Audit@12, HoC@15, Hand@18, EPACS@20, DDE@23
                 indices = {
-                  pacsAlloted: 2,
+                  pacsAlloted: 1,
                   dctCompleted: 3,
                   golive: 6,
-                  onSystemAudit: 11,
-                  hoc: 14,
-                  handholding: 17,
+                  onSystemAudit: 12,
+                  hoc: 15,
+                  handholding: 18,
                   epacs: 20,
                   dynamicDayEnd: 23
                 };
