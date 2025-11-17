@@ -279,16 +279,16 @@ const PACSProgressDashboard = () => {
               // Try multiple index patterns based on array length
               let indices;
               if (nums.length >= 25) {
-                // Standard format with all columns
+                // Standard format - based on actual PDF structure
                 indices = {
-                  pacsAlloted: 1,
-                  dctCompleted: 3,
-                  golive: 6,
-                  onSystemAudit: 12,
-                  hoc: 15,
-                  handholding: 18,
-                  epacs: 21,
-                  dynamicDayEnd: 24
+                  pacsAlloted: 3,
+                  dctCompleted: 5,
+                  golive: 11,
+                  onSystemAudit: 21,
+                  hoc: 13,
+                  handholding: 17,
+                  epacs: 19,
+                  dynamicDayEnd: 23
                 };
               } else if (nums.length >= 20 && nums.length < 25) {
                 // Shorter format - adjust indices
