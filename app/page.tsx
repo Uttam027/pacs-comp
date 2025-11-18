@@ -278,9 +278,10 @@ const PACSProgressDashboard = () => {
 
               // Try multiple index patterns based on array length
               let indices;
-              if (nums.length >= 25) {
-                // Standard format - Pattern: [S.No, Value, LastDay, CurrentDay, Progress, ...]
-                // Verified with PDF: PACS@1, DCT@3, GoLive@6, Audit@12, HoC@15, Hand@18, EPACS@20, DDE@23
+              if (nums.length >= 26) {
+                // Standard format with 26 elements - most districts
+                // Pattern: [S.No, Value, LastDay, CurrentDay, Progress, ...] for each metric
+                // Verified with AJMER console: PACS@1, DCT@3, GoLive@6, Audit@12, HoC@15, Hand@18, EPACS@21, DDE@24
                 indices = {
                   pacsAlloted: 1,
                   dctCompleted: 3,
@@ -288,8 +289,21 @@ const PACSProgressDashboard = () => {
                   onSystemAudit: 12,
                   hoc: 15,
                   handholding: 18,
-                  epacs: 20,
-                  dynamicDayEnd: 23
+                  epacs: 21,  // Changed from 20 to 21 for 26-element arrays
+                  dynamicDayEnd: 24  // Changed from 23 to 24 for 26-element arrays
+                };
+              } else if (nums.length === 25) {
+                // Shorter format with 25 elements - districts like Jaisalmer
+                // Missing one column (Audit Current Day merged with Last Day)
+                indices = {
+                  pacsAlloted: 1,
+                  dctCompleted: 3,
+                  golive: 6,
+                  onSystemAudit: 11,  // Shifted due to missing column
+                  hoc: 14,  // Shifted due to missing column
+                  handholding: 17,  // Shifted due to missing column
+                  epacs: 20,  // Index 20 for 25-element arrays
+                  dynamicDayEnd: 23  // Index 23 for 25-element arrays
                 };
               } else if (nums.length >= 20 && nums.length < 25) {
                 // Shorter format - adjust indices
