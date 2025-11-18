@@ -34,6 +34,7 @@ export default function PACSAnalytics() {
   const [isTrendExpanded, setIsTrendExpanded] = useState(false);
   const [selectedPACS, setSelectedPACS] = useState(null);
   const [isTimelineDialogOpen, setIsTimelineDialogOpen] = useState(false);
+  const [sortDaysAgo, setSortDaysAgo] = useState(null); // null = no sort, 'asc' = ascending, 'desc' = descending
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -668,7 +669,7 @@ export default function PACSAnalytics() {
       });
     }
 
-    return analysis.results.filter(p => {
+    let filtered = analysis.results.filter(p => {
       const matchesSearch = !searchTerm ||
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -691,6 +692,22 @@ export default function PACSAnalytics() {
 
       return matchesSearch && matchesCategory && matchesDistrict;
     });
+
+    // Apply sorting if enabled
+    if (sortDaysAgo) {
+      filtered = [...filtered].sort((a, b) => {
+        const daysA = a.daysSinceLastDayEnd !== null ? a.daysSinceLastDayEnd : 999999;
+        const daysB = b.daysSinceLastDayEnd !== null ? b.daysSinceLastDayEnd : 999999;
+
+        if (sortDaysAgo === 'asc') {
+          return daysA - daysB;
+        } else {
+          return daysB - daysA;
+        }
+      });
+    }
+
+    return filtered;
   };
 
   if (initialLoading) {
@@ -2053,15 +2070,36 @@ export default function PACSAnalytics() {
                       }}>
                         LAST DAY END
                       </th>
-                      <th style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: '#6b7280',
-                        textTransform: 'uppercase'
-                      }}>
-                        DAYS AGO
+                      <th
+                        onClick={() => {
+                          if (sortDaysAgo === null) {
+                            setSortDaysAgo('asc');
+                          } else if (sortDaysAgo === 'asc') {
+                            setSortDaysAgo('desc');
+                          } else {
+                            setSortDaysAgo(null);
+                          }
+                        }}
+                        style={{
+                          padding: '14px 16px',
+                          textAlign: 'left',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          DAYS AGO
+                          {sortDaysAgo === 'asc' && <span style={{ fontSize: '14px' }}>↑</span>}
+                          {sortDaysAgo === 'desc' && <span style={{ fontSize: '14px' }}>↓</span>}
+                          {sortDaysAgo === null && <span style={{ fontSize: '10px', opacity: 0.5 }}>⇅</span>}
+                        </div>
                       </th>
                       <th style={{
                         padding: '14px 16px',
