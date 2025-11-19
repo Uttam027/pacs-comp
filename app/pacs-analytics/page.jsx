@@ -35,6 +35,8 @@ export default function PACSAnalytics() {
   const [selectedPACS, setSelectedPACS] = useState(null);
   const [isTimelineDialogOpen, setIsTimelineDialogOpen] = useState(false);
   const [sortDaysAgo, setSortDaysAgo] = useState(null); // null = no sort, 'asc' = ascending, 'desc' = descending
+  const [trendDistrict, setTrendDistrict] = useState('all'); // District filter for trend analysis
+  const [trendCategories, setTrendCategories] = useState(['all']); // Category filter for trend analysis
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -749,7 +751,23 @@ export default function PACSAnalytics() {
     const last30 = sortedSnapshots.slice(-30);
 
     return last30.map(snapshot => {
-      const stats = snapshot.data?.stats || {};
+      const results = snapshot.data?.results || [];
+
+      // Filter by district if not 'all'
+      const districtFiltered = trendDistrict === 'all'
+        ? results
+        : results.filter(p => p.district === trendDistrict);
+
+      // Calculate stats based on filtered data
+      const stats = {
+        dynamicT7: districtFiltered.filter(p => p.isDynamicT7).length,
+        dynamicT1: districtFiltered.filter(p => p.isDynamicT1).length,
+        newPACS: districtFiltered.filter(p => p.category === 'new').length,
+        consistentPACS: districtFiltered.filter(p => p.category === 'consistent').length,
+        droppedPACS: districtFiltered.filter(p => p.category === 'dropped').length,
+        total: districtFiltered.length
+      };
+
       return {
         date: new Date(snapshot.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         fullDate: snapshot.date,
@@ -1586,9 +1604,76 @@ export default function PACSAnalytics() {
                   <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111', marginBottom: '8px' }}>
                     PACS Activity Trends (Last {getTrendData().length} Days)
                   </h3>
-                  <p style={{ fontSize: '13px', color: '#6b7280' }}>
+                  <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
                     Track how PACS classifications change over time to identify patterns and trends
                   </p>
+
+                  {/* Filters */}
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    {/* District Filter */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                        District
+                      </label>
+                      <select
+                        value={trendDistrict}
+                        onChange={(e) => setTrendDistrict(e.target.value)}
+                        style={{
+                          padding: '8px 32px 8px 12px',
+                          fontSize: '13px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          color: '#111',
+                          cursor: 'pointer',
+                          minWidth: '180px'
+                        }}
+                      >
+                        <option value="all">All Districts</option>
+                        {analysis && analysis.results && (() => {
+                          const districts = [...new Set(analysis.results.map(p => p.district))].sort();
+                          return districts.map(d => <option key={d} value={d}>{d}</option>);
+                        })()}
+                      </select>
+                    </div>
+
+                    {/* Category Filter */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                        Show Categories
+                      </label>
+                      <select
+                        multiple
+                        value={trendCategories}
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions, option => option.value);
+                          setTrendCategories(selected.length > 0 ? selected : ['all']);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '13px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          color: '#111',
+                          cursor: 'pointer',
+                          minWidth: '180px',
+                          height: '100px'
+                        }}
+                      >
+                        <option value="all">All Categories</option>
+                        <option value="T-7">T-7 (Dynamic Day-End)</option>
+                        <option value="T-1">T-1 (Today's Day-End)</option>
+                        <option value="New">New PACS</option>
+                        <option value="Consistent">Consistent PACS</option>
+                        <option value="Dropped">Dropped PACS</option>
+                        <option value="Inactive">Inactive PACS</option>
+                      </select>
+                      <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                        Hold Ctrl/Cmd to select multiple
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Chart */}
@@ -1619,46 +1704,66 @@ export default function PACSAnalytics() {
                       <Legend
                         wrapperStyle={{ fontSize: '12px' }}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="T-7"
-                        stroke="#0ea5e9"
-                        strokeWidth={2}
-                        dot={{ fill: '#0ea5e9', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="T-1"
-                        stroke="#06b6d4"
-                        strokeWidth={2}
-                        dot={{ fill: '#06b6d4', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="New"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={{ fill: '#10b981', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Consistent"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        dot={{ fill: '#f59e0b', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Dropped"
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        dot={{ fill: '#ef4444', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
+                      {(trendCategories.includes('all') || trendCategories.includes('T-7')) && (
+                        <Line
+                          type="monotone"
+                          dataKey="T-7"
+                          stroke="#0ea5e9"
+                          strokeWidth={2}
+                          dot={{ fill: '#0ea5e9', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      )}
+                      {(trendCategories.includes('all') || trendCategories.includes('T-1')) && (
+                        <Line
+                          type="monotone"
+                          dataKey="T-1"
+                          stroke="#06b6d4"
+                          strokeWidth={2}
+                          dot={{ fill: '#06b6d4', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      )}
+                      {(trendCategories.includes('all') || trendCategories.includes('New')) && (
+                        <Line
+                          type="monotone"
+                          dataKey="New"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          dot={{ fill: '#10b981', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      )}
+                      {(trendCategories.includes('all') || trendCategories.includes('Consistent')) && (
+                        <Line
+                          type="monotone"
+                          dataKey="Consistent"
+                          stroke="#f59e0b"
+                          strokeWidth={2}
+                          dot={{ fill: '#f59e0b', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      )}
+                      {(trendCategories.includes('all') || trendCategories.includes('Dropped')) && (
+                        <Line
+                          type="monotone"
+                          dataKey="Dropped"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          dot={{ fill: '#ef4444', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      )}
+                      {(trendCategories.includes('all') || trendCategories.includes('Inactive')) && (
+                        <Line
+                          type="monotone"
+                          dataKey="Inactive"
+                          stroke="#9ca3af"
+                          strokeWidth={2}
+                          dot={{ fill: '#9ca3af', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
