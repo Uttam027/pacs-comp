@@ -48,7 +48,7 @@ export default function TradeLogPage() {
         setShowForm(false);
       } else {
         const text = await res.text();
-        alert(`Failed to save trade: ${res.status} — ${text.slice(0, 200)}`);
+        alert(`Failed to save trade (${res.status}):\n${text.slice(0, 500)}`);
       }
     } catch (err) {
       alert(`Network error: ${err}`);
