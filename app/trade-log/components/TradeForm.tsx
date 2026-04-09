@@ -11,7 +11,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
-  onSubmit: (trade: Trade) => void;
+  onSubmit: (trade: Trade) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -20,6 +20,7 @@ const SETUPS = ["VCP", "Breakout", "Pullback", "Base Breakout", "Earnings", "Rev
 export default function TradeForm({ onSubmit, onCancel }: Props) {
   const today = new Date().toISOString().split("T")[0];
 
+  const [submitting, setSubmitting] = useState(false);
   const [ticker, setTicker] = useState("");
   const [direction, setDirection] = useState<TradeDirection>("Long");
   const [setup, setSetup] = useState("VCP");
@@ -47,7 +48,7 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
     : 0;
   const risk = avgEntry > 0 && stopLoss ? Math.abs(avgEntry - parseFloat(stopLoss)) * totalShares : 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Manual validation — required fields
@@ -88,7 +89,12 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
       grade: "A",
     };
 
-    onSubmit(computeTrade(raw));
+    setSubmitting(true);
+    try {
+      await onSubmit(computeTrade(raw));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -199,7 +205,9 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
       </div>
 
       <div className="flex gap-2 pt-1">
-        <Button type="submit" className="tracking-widest uppercase text-xs">Open Trade</Button>
+        <Button type="submit" disabled={submitting} className="tracking-widest uppercase text-xs">
+          {submitting ? "Saving..." : "Open Trade"}
+        </Button>
         <Button type="button" variant="outline" onClick={onCancel} className="tracking-widest uppercase text-xs">Cancel</Button>
       </div>
     </form>

@@ -37,14 +37,21 @@ export default function TradeLogPage() {
   }, []);
 
   const addTrade = useCallback(async (trade: Trade) => {
-    const res = await fetch("/api/trade-log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(trade),
-    });
-    if (res.ok) {
-      setTrades((prev) => [...prev, trade]);
-      setShowForm(false);
+    try {
+      const res = await fetch("/api/trade-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(trade),
+      });
+      if (res.ok) {
+        setTrades((prev) => [...prev, trade]);
+        setShowForm(false);
+      } else {
+        const text = await res.text();
+        alert(`Failed to save trade: ${res.status} — ${text.slice(0, 200)}`);
+      }
+    } catch (err) {
+      alert(`Network error: ${err}`);
     }
   }, []);
 
