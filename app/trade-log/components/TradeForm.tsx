@@ -49,7 +49,14 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const entryLegs: EntryLeg[] = legs.map((l) => ({
+
+    // Manual validation — required fields
+    if (!ticker.trim()) return alert("Ticker is required");
+    if (!stopLoss || parseFloat(stopLoss) <= 0) return alert("Stop loss is required");
+    const validLegs = legs.filter((l) => l.price && l.shares && parseFloat(l.price) > 0 && parseInt(l.shares) > 0);
+    if (validLegs.length === 0) return alert("At least one entry lot with price and shares is required");
+
+    const entryLegs: EntryLeg[] = validLegs.map((l) => ({
       id: crypto.randomUUID(),
       date: l.date,
       price: parseFloat(l.price),
@@ -92,7 +99,7 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
         <div className="space-y-1.5">
           <Label className="text-xs">Ticker</Label>
           <Input placeholder="RELIANCE" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            className="uppercase font-semibold tracking-wider" required />
+            className="uppercase font-semibold tracking-wider" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Direction</Label>
@@ -118,7 +125,7 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
       <div className="space-y-1.5 max-w-40">
         <Label className="text-xs">Stop Loss ₹</Label>
         <Input type="number" step="0.01" placeholder="0.00" value={stopLoss}
-          onChange={(e) => setStopLoss(e.target.value)} required />
+          onChange={(e) => setStopLoss(e.target.value)} />
       </div>
 
       {/* Entry legs */}
@@ -139,12 +146,12 @@ export default function TradeForm({ onSubmit, onCancel }: Props) {
               <div className="col-span-3 space-y-1">
                 <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Price ₹</Label>
                 <Input type="number" step="0.01" placeholder="0.00" value={leg.price}
-                  onChange={(e) => updateLeg(i, "price", e.target.value)} className="h-8 text-xs" required />
+                  onChange={(e) => updateLeg(i, "price", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="col-span-3 space-y-1">
                 <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Shares</Label>
                 <Input type="number" placeholder="0" value={leg.shares}
-                  onChange={(e) => updateLeg(i, "shares", e.target.value)} className="h-8 text-xs" required />
+                  onChange={(e) => updateLeg(i, "shares", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="col-span-2 space-y-1">
                 <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Note</Label>
