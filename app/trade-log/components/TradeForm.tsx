@@ -1,106 +1,102 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Trade, TradeDirection, TradeStatus } from "../types";
+import { useState } from "react";
+import { Trade, EntryLeg, computeTrade, TradeDirection } from "../types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
-  initial: Trade | null;
   onSubmit: (trade: Trade) => void;
   onCancel: () => void;
 }
 
 const SETUPS = ["VCP", "Breakout", "Pullback", "Base Breakout", "Earnings", "Reversal", "Other"];
-const GRADES = ["A+", "A", "B", "C", "D"];
 
-export default function TradeForm({ initial, onSubmit, onCancel }: Props) {
-  const blank = (): Omit<Trade, "id"> => ({
-    date: new Date().toISOString().split("T")[0],
-    exitDate: "",
-    ticker: "",
-    direction: "Long",
-    status: "Closed",
-    setup: "VCP",
-    entry: 0,
-    exit: 0,
-    stopLoss: 0,
-    shares: 0,
-    pnl: 0,
-    pnlPct: 0,
-    rMultiple: 0,
-    notes: "",
-    tags: "",
-    grade: "A",
-  });
+export default function TradeForm({ onSubmit, onCancel }: Props) {
+  const today = new Date().toISOString().split("T")[0];
 
-  const [form, setForm] = useState<Omit<Trade, "id">>(blank());
+  const [ticker, setTicker] = useState("");
+  const [direction, setDirection] = useState<TradeDirection>("Long");
+  const [setup, setSetup] = useState("VCP");
+  const [stopLoss, setStopLoss] = useState("");
+  const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState("");
 
-  useEffect(() => {
-    setForm(initial ? { ...initial } : blank());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial]);
+  // First entry leg — required
+  const [legs, setLegs] = useState<{ date: string; price: string; shares: string; notes: string }[]>([
+    { date: today, price: "", shares: "", notes: "" },
+  ]);
 
-  const set = (key: keyof Omit<Trade, "id">, val: string | number) =>
-    setForm((prev) => ({ ...prev, [key]: val }));
+  const addLeg = () => setLegs((prev) => [...prev, { date: today, price: "", shares: "", notes: "" }]);
+  const removeLeg = (i: number) => setLegs((prev) => prev.filter((_, idx) => idx !== i));
+  const updateLeg = (i: number, key: string, val: string) =>
+    setLegs((prev) => prev.map((l, idx) => idx === i ? { ...l, [key]: val } : l));
 
-  useEffect(() => {
-    const { entry, exit, stopLoss, shares, direction } = form;
-    if (entry > 0 && exit && exit > 0 && shares > 0) {
-      const rawPnl = direction === "Long" ? (exit - entry) * shares : (entry - exit) * shares;
-      const pnlPct = direction === "Long" ? ((exit - entry) / entry) * 100 : ((entry - exit) / entry) * 100;
-      const risk = Math.abs(entry - stopLoss) * shares;
-      const rMult = risk > 0 ? rawPnl / risk : 0;
-      setForm((prev) => ({
-        ...prev,
-        pnl: parseFloat(rawPnl.toFixed(2)),
-        pnlPct: parseFloat(pnlPct.toFixed(2)),
-        rMultiple: parseFloat(rMult.toFixed(2)),
-      }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.entry, form.exit, form.stopLoss, form.shares, form.direction]);
+  // Compute preview
+  const parsedLegs = legs.filter((l) => l.price && l.shares).map((l) => ({
+    price: parseFloat(l.price), shares: parseInt(l.shares),
+  }));
+  const totalShares = parsedLegs.reduce((s, l) => s + l.shares, 0);
+  const avgEntry = totalShares > 0
+    ? parsedLegs.reduce((s, l) => s + l.price * l.shares, 0) / totalShares
+    : 0;
+  const risk = avgEntry > 0 && stopLoss ? Math.abs(avgEntry - parseFloat(stopLoss)) * totalShares : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ ...form, id: initial?.id ?? "" } as Trade);
+    const entryLegs: EntryLeg[] = legs.map((l) => ({
+      id: crypto.randomUUID(),
+      date: l.date,
+      price: parseFloat(l.price),
+      shares: parseInt(l.shares),
+      notes: l.notes,
+    }));
+
+    const raw: Trade = {
+      id: crypto.randomUUID(),
+      ticker: ticker.toUpperCase(),
+      direction,
+      status: "Open",
+      setup,
+      stopLoss: parseFloat(stopLoss) || 0,
+      entries: entryLegs,
+      exits: [],
+      avgEntry: 0,
+      avgExit: 0,
+      totalShares: 0,
+      exitedShares: 0,
+      openShares: 0,
+      realizedPnl: 0,
+      unrealizedPnl: 0,
+      pnlPct: 0,
+      rMultiple: 0,
+      firstEntryDate: entryLegs[0]?.date ?? today,
+      notes,
+      tags,
+      grade: "A",
+    };
+
+    onSubmit(computeTrade(raw));
   };
 
-  const pnlColor = form.pnl > 0 ? "text-emerald-600" : form.pnl < 0 ? "text-red-500" : "text-gray-400";
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Ticker</Label>
-          <Input
-            placeholder="RELIANCE"
-            value={form.ticker}
-            onChange={(e) => set("ticker", e.target.value.toUpperCase())}
-            className="uppercase font-semibold tracking-wider"
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Entry Date</Label>
-          <Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} required />
-        </div>
-      </div>
-
+      {/* Basic info */}
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1.5">
+          <Label className="text-xs">Ticker</Label>
+          <Input placeholder="RELIANCE" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())}
+            className="uppercase font-semibold tracking-wider" required />
+        </div>
+        <div className="space-y-1.5">
           <Label className="text-xs">Direction</Label>
-          <Select value={form.direction} onValueChange={(v) => set("direction", v as TradeDirection)}>
+          <Select value={direction} onValueChange={(v) => setDirection(v as TradeDirection)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Long">Long</SelectItem>
@@ -109,18 +105,8 @@ export default function TradeForm({ initial, onSubmit, onCancel }: Props) {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Status</Label>
-          <Select value={form.status} onValueChange={(v) => set("status", v as TradeStatus)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Closed">Closed</SelectItem>
-              <SelectItem value="Open">Open</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
           <Label className="text-xs">Setup</Label>
-          <Select value={form.setup} onValueChange={(v) => set("setup", v)}>
+          <Select value={setup} onValueChange={setSetup}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {SETUPS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -129,88 +115,85 @@ export default function TradeForm({ initial, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { key: "entry", label: "Entry ₹" },
-          { key: "exit", label: "Exit ₹" },
-          { key: "stopLoss", label: "Stop Loss ₹" },
-          { key: "shares", label: "Qty / Shares" },
-        ].map(({ key, label }) => (
-          <div key={key} className="space-y-1.5">
-            <Label className="text-xs">{label}</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={(form[key as keyof typeof form] as number) || ""}
-              onChange={(e) => set(key as keyof Omit<Trade, "id">, parseFloat(e.target.value) || 0)}
-              required={key === "entry" || key === "shares"}
-            />
-          </div>
-        ))}
+      <div className="space-y-1.5 max-w-40">
+        <Label className="text-xs">Stop Loss ₹</Label>
+        <Input type="number" step="0.01" placeholder="0.00" value={stopLoss}
+          onChange={(e) => setStopLoss(e.target.value)} required />
       </div>
 
-      {/* Auto-calculated */}
-      <div className="grid grid-cols-3 gap-3 rounded-lg bg-gray-50 border border-gray-200 p-3">
-        {[
-          { lbl: "P&L ₹", val: form.pnl, fmt: (v: number) => `${v >= 0 ? "+" : "−"}₹${Math.abs(v).toLocaleString("en-IN")}` },
-          { lbl: "P&L %", val: form.pnlPct, fmt: (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%` },
-          { lbl: "R Multiple", val: form.rMultiple, fmt: (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}R` },
-        ].map(({ lbl, val, fmt }) => (
-          <div key={lbl}>
-            <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">{lbl}</p>
-            <p className={`text-base font-bold tabular-nums ${val > 0 ? "text-emerald-600" : val < 0 ? "text-red-500" : "text-gray-400"}`}>
-              {fmt(val)}
-            </p>
-          </div>
-        ))}
+      {/* Entry legs */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold tracking-widest uppercase text-gray-500">Entry Lots</Label>
+          <Button type="button" variant="outline" size="sm" onClick={addLeg}
+            className="h-6 text-[10px] tracking-widest uppercase px-2">+ Add Lot</Button>
+        </div>
+
+        <div className="space-y-2">
+          {legs.map((leg, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-end bg-gray-50 rounded-md p-2 border border-gray-100">
+              <div className="col-span-3 space-y-1">
+                <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Date</Label>
+                <Input type="date" value={leg.date} onChange={(e) => updateLeg(i, "date", e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="col-span-3 space-y-1">
+                <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Price ₹</Label>
+                <Input type="number" step="0.01" placeholder="0.00" value={leg.price}
+                  onChange={(e) => updateLeg(i, "price", e.target.value)} className="h-8 text-xs" required />
+              </div>
+              <div className="col-span-3 space-y-1">
+                <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Shares</Label>
+                <Input type="number" placeholder="0" value={leg.shares}
+                  onChange={(e) => updateLeg(i, "shares", e.target.value)} className="h-8 text-xs" required />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Note</Label>
+                <Input placeholder="optional" value={leg.notes}
+                  onChange={(e) => updateLeg(i, "notes", e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                {legs.length > 1 && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeLeg(i)}
+                    className="h-8 w-8 p-0 text-gray-300 hover:text-red-400">×</Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Exit Date</Label>
-          <Input type="date" value={form.exitDate || ""} onChange={(e) => set("exitDate", e.target.value)} />
+      {/* Preview */}
+      {totalShares > 0 && avgEntry > 0 && (
+        <div className="grid grid-cols-3 gap-3 rounded-lg bg-gray-50 border border-gray-200 p-3">
+          <div>
+            <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Avg Entry</p>
+            <p className="text-sm font-bold text-gray-800">₹{avgEntry.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Total Shares</p>
+            <p className="text-sm font-bold text-gray-800">{totalShares}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Max Risk ₹</p>
+            <p className="text-sm font-bold text-red-500">{risk > 0 ? `−₹${risk.toFixed(0)}` : "—"}</p>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Grade</Label>
-          <Select value={form.grade} onValueChange={(v) => set("grade", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
 
       <div className="space-y-1.5">
-        <Label className="text-xs">Tags (comma separated)</Label>
-        <Input
-          placeholder="earnings play, sector rotation, ..."
-          value={form.tags || ""}
-          onChange={(e) => set("tags", e.target.value)}
-        />
+        <Label className="text-xs">Tags</Label>
+        <Input placeholder="earnings play, sector rotation, ..." value={tags} onChange={(e) => setTags(e.target.value)} />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs">Notes / Rationale</Label>
-        <Textarea
-          rows={3}
-          placeholder="Why did you take this trade? What was the thesis?"
-          value={form.notes || ""}
-          onChange={(e) => set("notes", e.target.value)}
-          className="resize-none"
-        />
+        <Textarea rows={2} placeholder="Why did you take this trade?" value={notes}
+          onChange={(e) => setNotes(e.target.value)} className="resize-none" />
       </div>
 
-      {/* Preview pnl color so it's used */}
-      <span className={`hidden ${pnlColor}`} />
-
       <div className="flex gap-2 pt-1">
-        <Button type="submit" className="tracking-widest uppercase text-xs">
-          {initial ? "Update Trade" : "Log Trade"}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel} className="tracking-widest uppercase text-xs">
-          Cancel
-        </Button>
+        <Button type="submit" className="tracking-widest uppercase text-xs">Open Trade</Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="tracking-widest uppercase text-xs">Cancel</Button>
       </div>
     </form>
   );

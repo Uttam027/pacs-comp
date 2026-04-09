@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import TradeForm from "./components/TradeForm";
+import TradeDetail from "./components/TradeDetail";
 import TradeTable from "./components/TradeTable";
 import StatsCards from "./components/StatsCards";
 import EquityCurveChart from "./components/EquityCurveChart";
@@ -15,53 +16,54 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
 export default function TradeLogPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filterSetup, setFilterSetup] = useState("All");
   const [filterResult, setFilterResult] = useState("All");
 
   useEffect(() => {
-    const stored = localStorage.getItem("trade-log");
+    const stored = localStorage.getItem("trade-log-v2");
     if (stored) setTrades(JSON.parse(stored));
   }, []);
 
   const persist = useCallback((updated: Trade[]) => {
     setTrades(updated);
-    localStorage.setItem("trade-log", JSON.stringify(updated));
+    localStorage.setItem("trade-log-v2", JSON.stringify(updated));
   }, []);
 
   const addTrade = (trade: Trade) => {
-    persist([...trades, { ...trade, id: crypto.randomUUID() }]);
+    persist([...trades, trade]);
     setShowForm(false);
   };
 
   const updateTrade = (trade: Trade) => {
-    persist(trades.map((t) => (t.id === trade.id ? trade : t)));
-    setEditingTrade(null);
-    setShowForm(false);
+    persist(trades.map((t) => t.id === trade.id ? trade : t));
+    setSelectedTrade(trade);
   };
 
-  const deleteTrade = (id: string) => persist(trades.filter((t) => t.id !== id));
+  const deleteTrade = (id: string) => {
+    persist(trades.filter((t) => t.id !== id));
+    setSelectedTrade(null);
+  };
 
   const filteredTrades = trades.filter((t) => {
     const setupOk = filterSetup === "All" || t.setup === filterSetup;
     const resultOk =
       filterResult === "All" ||
-      (filterResult === "Win" && t.pnl > 0) ||
-      (filterResult === "Loss" && t.pnl < 0) ||
-      (filterResult === "BE" && t.pnl === 0);
+      (filterResult === "Open" && t.status === "Open") ||
+      (filterResult === "Closed" && t.status === "Closed") ||
+      (filterResult === "Win" && t.realizedPnl > 0) ||
+      (filterResult === "Loss" && t.realizedPnl < 0);
     return setupOk && resultOk;
   });
 
   const setups = ["All", ...Array.from(new Set(trades.map((t) => t.setup).filter(Boolean)))];
+  const openCount = trades.filter((t) => t.status === "Open").length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -72,21 +74,24 @@ export default function TradeLogPage() {
             <h1 className="text-lg font-bold tracking-tight text-gray-900">Trade Logbook</h1>
             <p className="text-xs text-gray-400 tracking-widest uppercase mt-0.5">Personal · Minervani Method</p>
           </div>
-          <Button
-            onClick={() => { setShowForm(true); setEditingTrade(null); }}
-            className="text-xs tracking-widest uppercase"
-          >
-            + Log Trade
-          </Button>
+          <div className="flex items-center gap-3">
+            {openCount > 0 && (
+              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 text-xs">
+                {openCount} open position{openCount !== 1 ? "s" : ""}
+              </Badge>
+            )}
+            <Button onClick={() => setShowForm(true)} className="text-xs tracking-widest uppercase">
+              + Open Trade
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-5">
 
-        {/* Stats */}
         <StatsCards trades={filteredTrades} />
 
-        {/* Row 1: Equity Curve + Donut */}
+        {/* Charts row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
             <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Equity Curve</p>
@@ -98,7 +103,7 @@ export default function TradeLogPage() {
           </div>
         </div>
 
-        {/* Row 2: P&L bars + Monthly */}
+        {/* Charts row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
             <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L per Trade</p>
@@ -110,7 +115,7 @@ export default function TradeLogPage() {
           </div>
         </div>
 
-        {/* Row 3: R-Multiple + Setup Performance */}
+        {/* Charts row 3 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
             <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">R-Multiple per Trade</p>
@@ -127,24 +132,16 @@ export default function TradeLogPage() {
         {/* Filters */}
         <div className="flex gap-2 items-center flex-wrap">
           <span className="text-xs text-gray-400 font-medium mr-1">Filter:</span>
-          {["All", "Win", "Loss", "BE"].map((r) => (
-            <Badge
-              key={r}
-              variant={filterResult === r ? "default" : "outline"}
-              className="cursor-pointer text-[10px] tracking-widest uppercase"
-              onClick={() => setFilterResult(r)}
-            >
+          {["All", "Open", "Closed", "Win", "Loss"].map((r) => (
+            <Badge key={r} variant={filterResult === r ? "default" : "outline"}
+              className="cursor-pointer text-[10px] tracking-widest uppercase" onClick={() => setFilterResult(r)}>
               {r}
             </Badge>
           ))}
           <Separator orientation="vertical" className="h-5 mx-1" />
           {setups.map((s) => (
-            <Badge
-              key={s}
-              variant={filterSetup === s ? "secondary" : "outline"}
-              className="cursor-pointer text-[10px] tracking-widest uppercase"
-              onClick={() => setFilterSetup(s)}
-            >
+            <Badge key={s} variant={filterSetup === s ? "secondary" : "outline"}
+              className="cursor-pointer text-[10px] tracking-widest uppercase" onClick={() => setFilterSetup(s)}>
               {s}
             </Badge>
           ))}
@@ -153,27 +150,42 @@ export default function TradeLogPage() {
           </span>
         </div>
 
-        {/* Table */}
-        <TradeTable
-          trades={filteredTrades}
-          onEdit={(t) => { setEditingTrade(t); setShowForm(true); }}
-          onDelete={deleteTrade}
-        />
+        <TradeTable trades={filteredTrades} onOpen={setSelectedTrade} />
       </div>
 
-      {/* Dialog */}
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingTrade(null); } }}>
+      {/* Open new trade dialog */}
+      <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false); }}>
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-sm tracking-widest uppercase font-bold">
-              {editingTrade ? "Edit Trade" : "Log New Trade"}
+            <DialogTitle className="text-sm tracking-widest uppercase font-bold">Open New Trade</DialogTitle>
+          </DialogHeader>
+          <TradeForm onSubmit={addTrade} onCancel={() => setShowForm(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage existing trade dialog */}
+      <Dialog open={!!selectedTrade} onOpenChange={(o) => { if (!o) setSelectedTrade(null); }}>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm tracking-widest uppercase font-bold flex items-center gap-2">
+              {selectedTrade?.ticker}
+              <Badge variant="outline" className={`text-[9px] ${selectedTrade?.direction === "Long" ? "text-blue-600 border-blue-200 bg-blue-50" : "text-red-500 border-red-200 bg-red-50"}`}>
+                {selectedTrade?.direction}
+              </Badge>
+              <Badge variant="outline" className={`text-[9px] ${selectedTrade?.status === "Open" ? "text-blue-600 border-blue-200 bg-blue-50" : "text-emerald-600 border-emerald-200 bg-emerald-50"}`}>
+                {selectedTrade?.status}
+              </Badge>
+              <span className="text-gray-300 font-normal text-xs">{selectedTrade?.setup}</span>
             </DialogTitle>
           </DialogHeader>
-          <TradeForm
-            initial={editingTrade}
-            onSubmit={editingTrade ? updateTrade : addTrade}
-            onCancel={() => { setShowForm(false); setEditingTrade(null); }}
-          />
+          {selectedTrade && (
+            <TradeDetail
+              trade={selectedTrade}
+              onUpdate={updateTrade}
+              onDelete={deleteTrade}
+              onClose={() => setSelectedTrade(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

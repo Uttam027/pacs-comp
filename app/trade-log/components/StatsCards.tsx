@@ -6,26 +6,27 @@ import { Card, CardContent } from "@/components/ui/card";
 interface Props { trades: Trade[] }
 
 export default function StatsCards({ trades: allTrades }: Props) {
-  const trades = allTrades.filter((t) => t.status === "Closed");
-  const totalTrades = trades.length;
-  const wins = trades.filter((t) => t.pnl > 0);
-  const losses = trades.filter((t) => t.pnl < 0);
-  const winRate = totalTrades > 0 ? (wins.length / totalTrades) * 100 : 0;
-  const totalPnl = trades.reduce((s, t) => s + t.pnl, 0);
-  const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + t.pnl, 0) / wins.length : 0;
-  const avgLoss = losses.length > 0 ? losses.reduce((s, t) => s + t.pnl, 0) / losses.length : 0;
+  const closed = allTrades.filter((t) => t.status === "Closed");
+  const open = allTrades.filter((t) => t.status === "Open");
+  const total = closed.length;
+  const wins = closed.filter((t) => t.realizedPnl > 0);
+  const losses = closed.filter((t) => t.realizedPnl < 0);
+  const winRate = total > 0 ? (wins.length / total) * 100 : 0;
+  const totalPnl = allTrades.reduce((s, t) => s + t.realizedPnl, 0);
+  const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + t.realizedPnl, 0) / wins.length : 0;
+  const avgLoss = losses.length > 0 ? losses.reduce((s, t) => s + t.realizedPnl, 0) / losses.length : 0;
   const profitFactor = avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : 0;
-  const avgR = totalTrades > 0 ? trades.reduce((s, t) => s + t.rMultiple, 0) / totalTrades : 0;
-  const maxWin = wins.length > 0 ? Math.max(...wins.map((t) => t.pnl)) : 0;
-  const maxLoss = losses.length > 0 ? Math.min(...losses.map((t) => t.pnl)) : 0;
+  const avgR = total > 0 ? closed.reduce((s, t) => s + t.rMultiple, 0) / total : 0;
+  const maxWin = wins.length > 0 ? Math.max(...wins.map((t) => t.realizedPnl)) : 0;
+  const maxLoss = losses.length > 0 ? Math.min(...losses.map((t) => t.realizedPnl)) : 0;
 
   const streak = (() => {
-    if (!trades.length) return { current: 0, type: "—" as const };
-    const sorted = [...trades].sort((a, b) => a.date.localeCompare(b.date));
-    const type = sorted[sorted.length - 1].pnl > 0 ? "W" as const : "L" as const;
+    if (!closed.length) return { current: 0, type: "—" as const };
+    const s = [...closed].sort((a, b) => a.firstEntryDate.localeCompare(b.firstEntryDate));
+    const type = s[s.length - 1].realizedPnl > 0 ? "W" as const : "L" as const;
     let cur = 0;
-    for (let i = sorted.length - 1; i >= 0; i--) {
-      const w = sorted[i].pnl > 0;
+    for (let i = s.length - 1; i >= 0; i--) {
+      const w = s[i].realizedPnl > 0;
       if ((type === "W" && w) || (type === "L" && !w)) cur++;
       else break;
     }
@@ -39,12 +40,12 @@ export default function StatsCards({ trades: allTrades }: Props) {
       label: "Net P&L",
       value: totalPnl !== 0 ? `${totalPnl >= 0 ? "+" : "−"}${fmt(totalPnl)}` : "—",
       color: totalPnl > 0 ? "text-emerald-600" : totalPnl < 0 ? "text-red-500" : "text-gray-400",
-      bar: totalPnl > 0 ? "bg-emerald-500" : "bg-red-400",
-      sub: `${totalTrades} closed`,
+      bar: totalPnl >= 0 ? "bg-emerald-500" : "bg-red-400",
+      sub: `${total} closed · ${open.length} open`,
     },
     {
       label: "Win Rate",
-      value: totalTrades > 0 ? `${winRate.toFixed(1)}%` : "—",
+      value: total > 0 ? `${winRate.toFixed(1)}%` : "—",
       color: winRate >= 50 ? "text-emerald-600" : "text-red-500",
       bar: winRate >= 50 ? "bg-emerald-500" : "bg-red-400",
       sub: `${wins.length}W · ${losses.length}L`,
@@ -58,10 +59,10 @@ export default function StatsCards({ trades: allTrades }: Props) {
     },
     {
       label: "Avg R",
-      value: totalTrades > 0 ? `${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R` : "—",
+      value: total > 0 ? `${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R` : "—",
       color: avgR >= 1 ? "text-emerald-600" : avgR >= 0 ? "text-amber-500" : "text-red-500",
       bar: avgR >= 1 ? "bg-emerald-500" : "bg-amber-400",
-      sub: "per trade",
+      sub: "closed trades",
     },
     {
       label: "Best Trade",
@@ -85,11 +86,11 @@ export default function StatsCards({ trades: allTrades }: Props) {
       sub: "consecutive",
     },
     {
-      label: "Avg Win",
-      value: avgWin > 0 ? `+${fmt(avgWin)}` : "—",
-      color: "text-emerald-600",
-      bar: "bg-emerald-500",
-      sub: avgLoss < 0 ? `Avg L: −${fmt(avgLoss)}` : "",
+      label: "Open Exposure",
+      value: open.length > 0 ? `${open.reduce((s, t) => s + t.openShares, 0)} sh` : "—",
+      color: "text-blue-500",
+      bar: "bg-blue-400",
+      sub: `${open.length} position${open.length !== 1 ? "s" : ""}`,
     },
   ];
 
