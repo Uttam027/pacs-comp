@@ -2,14 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Trade } from "../types";
-import {
-  Chart,
-  BarController,
-  BarElement,
-  LinearScale,
-  CategoryScale,
-  Tooltip,
-} from "chart.js";
+import { Chart, BarController, BarElement, LinearScale, CategoryScale, Tooltip } from "chart.js";
 
 Chart.register(BarController, BarElement, LinearScale, CategoryScale, Tooltip);
 
@@ -21,57 +14,42 @@ export default function MonthlyPnlChart({ trades }: Props) {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const closed = trades.filter(t => t.status === "Closed");
-
+    const closed = trades.filter((t) => t.status === "Closed");
     const monthMap: Record<string, number> = {};
-    closed.forEach(t => {
-      const month = t.date.slice(0, 7); // YYYY-MM
-      monthMap[month] = (monthMap[month] ?? 0) + t.pnl;
+    closed.forEach((t) => {
+      const m = t.date.slice(0, 7);
+      monthMap[m] = (monthMap[m] ?? 0) + t.pnl;
     });
-
-    const labels = Object.keys(monthMap).sort();
-    const data = labels.map(m => parseFloat(monthMap[m].toFixed(2)));
-    const colors = data.map(v => v >= 0 ? "rgba(99,220,180,0.7)" : "rgba(248,113,113,0.7)");
-    const borders = data.map(v => v >= 0 ? "#63dcb4" : "#f87171");
-
-    // Format labels as "Jan 25"
-    const formattedLabels = labels.map(l => {
+    const keys = Object.keys(monthMap).sort();
+    const data = keys.map((m) => parseFloat(monthMap[m].toFixed(2)));
+    const labels = keys.map((l) => {
       const [y, m] = l.split("-");
-      const d = new Date(parseInt(y), parseInt(m) - 1);
-      return d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+      return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
     });
-
     if (chartRef.current) chartRef.current.destroy();
 
     chartRef.current = new Chart(canvasRef.current, {
       type: "bar",
       data: {
-        labels: formattedLabels,
+        labels,
         datasets: [{
           data,
-          backgroundColor: colors,
-          borderColor: borders,
-          borderWidth: 1,
-          borderRadius: 4,
+          backgroundColor: data.map((v) => v >= 0 ? "#d1fae5" : "#fee2e2"),
+          borderColor: data.map((v) => v >= 0 ? "#10b981" : "#ef4444"),
+          borderWidth: 1.5,
+          borderRadius: 5,
           borderSkipped: false,
         }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: "#0d1117",
-            borderColor: "#30363d",
-            borderWidth: 1,
-            titleColor: "#8b949e",
-            bodyColor: "#e6edf3",
-            padding: 10,
-            titleFont: { family: "monospace", size: 10 },
-            bodyFont: { family: "monospace", size: 12, weight: "bold" },
+            backgroundColor: "#fff", borderColor: "#e5e7eb", borderWidth: 1,
+            titleColor: "#6b7280", bodyColor: "#111827", padding: 10,
             callbacks: {
-              label: ctx => {
+              label: (ctx) => {
                 const val: number = ctx.parsed.y ?? 0;
                 return ` ₹${val >= 0 ? "+" : ""}${val.toLocaleString("en-IN")}`;
               },
@@ -79,19 +57,10 @@ export default function MonthlyPnlChart({ trades }: Props) {
           },
         },
         scales: {
-          x: {
-            ticks: { color: "#8b949e", font: { family: "monospace", size: 9 } },
-            grid: { display: false },
-            border: { color: "#21262d" },
-          },
+          x: { ticks: { color: "#9ca3af", font: { size: 9 } }, grid: { display: false }, border: { color: "#e5e7eb" } },
           y: {
-            ticks: {
-              color: "#484f58",
-              font: { family: "monospace", size: 9 },
-              callback: val => val != null ? `₹${Number(val).toLocaleString("en-IN")}` : "",
-            },
-            grid: { color: "#161b22" },
-            border: { color: "#21262d" },
+            ticks: { color: "#9ca3af", font: { size: 9 }, callback: (val) => val != null ? `₹${Number(val).toLocaleString("en-IN")}` : "" },
+            grid: { color: "#f3f4f6" }, border: { color: "#e5e7eb" },
           },
         },
       },
@@ -99,8 +68,8 @@ export default function MonthlyPnlChart({ trades }: Props) {
     return () => { chartRef.current?.destroy(); };
   }, [trades]);
 
-  if (!trades.filter(t => t.status === "Closed").length)
-    return <div className="h-52 flex items-center justify-center"><p className="text-[#30363d] text-[10px] tracking-widest uppercase">No data</p></div>;
+  if (!trades.filter((t) => t.status === "Closed").length)
+    return <div className="h-52 flex items-center justify-center"><p className="text-gray-200 text-xs">No data</p></div>;
 
   return <div className="h-52"><canvas ref={canvasRef} /></div>;
 }

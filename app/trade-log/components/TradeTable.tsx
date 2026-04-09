@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import { Trade } from "../types";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Props {
   trades: Trade[];
@@ -17,7 +27,7 @@ export default function TradeTable({ trades, onEdit, onDelete }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("desc"); }
   };
 
@@ -30,24 +40,23 @@ export default function TradeTable({ trades, onEdit, onDelete }: Props) {
 
   const SortIcon = ({ k }: { k: SortKey }) =>
     sortKey === k
-      ? <span className="ml-1 text-[#63dcb4]">{sortDir === "asc" ? "↑" : "↓"}</span>
-      : <span className="ml-1 text-[#21262d]">↕</span>;
+      ? <span className="ml-1 text-gray-900">{sortDir === "asc" ? "↑" : "↓"}</span>
+      : <span className="ml-1 text-gray-300">↕</span>;
 
-  const th = "text-[9px] tracking-widest uppercase text-[#484f58] text-left px-3 py-2.5 cursor-pointer hover:text-[#8b949e] whitespace-nowrap select-none border-b border-[#21262d] transition-colors";
-  const td = "px-3 py-3 text-xs border-b border-[#161b22]";
-
-  if (!trades.length) return (
-    <div className="border border-[#21262d] bg-[#0d1117] rounded-md p-16 text-center">
-      <p className="text-[#30363d] text-xs tracking-widest uppercase">No trades logged yet</p>
-      <p className="text-[#21262d] text-[10px] tracking-widest mt-1">Click &quot;+ Log Trade&quot; to begin</p>
-    </div>
-  );
+  if (!trades.length) {
+    return (
+      <div className="border border-gray-200 rounded-lg bg-white p-16 text-center">
+        <p className="text-gray-300 text-sm">No trades logged yet</p>
+        <p className="text-gray-200 text-xs mt-1">Click &quot;+ Log Trade&quot; to begin</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="border border-[#21262d] bg-[#0d1117] rounded-md overflow-x-auto">
-      <table className="w-full min-w-[960px]">
-        <thead>
-          <tr className="bg-[#010409]">
+    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-xs">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-gray-50 hover:bg-gray-50">
             {([
               ["date", "Date"],
               ["ticker", "Ticker"],
@@ -61,117 +70,142 @@ export default function TradeTable({ trades, onEdit, onDelete }: Props) {
               ["rMultiple", "R"],
               ["grade", "Grade"],
             ] as [SortKey, string][]).map(([key, label]) => (
-              <th key={key} className={th} onClick={() => handleSort(key)}>
+              <TableHead
+                key={key}
+                className="text-[9px] tracking-widest uppercase font-semibold text-gray-400 cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
+                onClick={() => handleSort(key)}
+              >
                 {label}<SortIcon k={key} />
-              </th>
+              </TableHead>
             ))}
-            <th className={th}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map(trade => {
+            <TableHead className="text-[9px] tracking-widest uppercase font-semibold text-gray-400 whitespace-nowrap">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((trade) => {
             const win = trade.pnl > 0;
             const loss = trade.pnl < 0;
             const expanded = expandedId === trade.id;
-            const pnlColor = win ? "text-[#63dcb4]" : loss ? "text-[#f87171]" : "text-[#484f58]";
+            const pnlColor = win ? "text-emerald-600" : loss ? "text-red-500" : "text-gray-400";
 
             return (
               <>
-                <tr
+                <TableRow
                   key={trade.id}
-                  className={`hover:bg-[#161b22] transition-colors cursor-pointer ${expanded ? "bg-[#161b22]" : ""}`}
+                  className={`cursor-pointer transition-colors ${expanded ? "bg-gray-50" : ""}`}
                   onClick={() => setExpandedId(expanded ? null : trade.id)}
                 >
-                  <td className={`${td} text-[#484f58] tabular-nums`}>{trade.date}</td>
-                  <td className={td}>
-                    <span className="font-bold text-[#e6edf3] tracking-wider">{trade.ticker}</span>
-                    {trade.status === "Open" && (
-                      <span className="ml-2 text-[8px] bg-[rgba(99,220,180,0.1)] text-[#63dcb4] border border-[rgba(99,220,180,0.3)] px-1.5 py-0.5 tracking-widest uppercase rounded-sm">Open</span>
-                    )}
-                  </td>
-                  <td className={td}>
-                    <span className={`text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded-sm ${
-                      trade.direction === "Long"
-                        ? "bg-[rgba(59,130,246,0.1)] text-[#60a5fa] border border-[rgba(59,130,246,0.3)]"
-                        : "bg-[rgba(248,113,113,0.1)] text-[#f87171] border border-[rgba(248,113,113,0.3)]"
-                    }`}>
+                  <TableCell className="text-xs text-gray-400 tabular-nums whitespace-nowrap">{trade.date}</TableCell>
+
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-gray-900 tracking-wider">{trade.ticker}</span>
+                      {trade.status === "Open" && (
+                        <Badge variant="outline" className="text-[8px] py-0 px-1 text-emerald-600 border-emerald-300 bg-emerald-50">Open</Badge>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] tracking-wider ${
+                        trade.direction === "Long"
+                          ? "text-blue-600 border-blue-200 bg-blue-50"
+                          : "text-red-500 border-red-200 bg-red-50"
+                      }`}
+                    >
                       {trade.direction}
-                    </span>
-                  </td>
-                  <td className={`${td} text-[#8b949e] text-[10px] tracking-wide`}>{trade.setup}</td>
-                  <td className={`${td} tabular-nums text-[#8b949e]`}>₹{trade.entry.toLocaleString("en-IN")}</td>
-                  <td className={`${td} tabular-nums text-[#8b949e]`}>
-                    {trade.exit ? `₹${trade.exit.toLocaleString("en-IN")}` : <span className="text-[#30363d]">—</span>}
-                  </td>
-                  <td className={`${td} tabular-nums text-[#484f58]`}>{trade.shares}</td>
-                  <td className={`${td} tabular-nums font-bold`}>
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell className="text-xs text-gray-500">{trade.setup}</TableCell>
+                  <TableCell className="text-xs tabular-nums text-gray-600">₹{trade.entry.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-xs tabular-nums text-gray-600">
+                    {trade.exit ? `₹${trade.exit.toLocaleString("en-IN")}` : <span className="text-gray-300">—</span>}
+                  </TableCell>
+                  <TableCell className="text-xs tabular-nums text-gray-400">{trade.shares}</TableCell>
+
+                  <TableCell className="text-xs tabular-nums font-bold">
                     <span className={pnlColor}>
                       {trade.pnl > 0 ? "+" : trade.pnl < 0 ? "−" : ""}₹{Math.abs(trade.pnl).toLocaleString("en-IN")}
                     </span>
-                  </td>
-                  <td className={`${td} tabular-nums`}>
+                  </TableCell>
+
+                  <TableCell className="text-xs tabular-nums">
                     <span className={pnlColor}>{trade.pnlPct > 0 ? "+" : ""}{trade.pnlPct.toFixed(2)}%</span>
-                  </td>
-                  <td className={`${td} tabular-nums`}>
+                  </TableCell>
+
+                  <TableCell className="text-xs tabular-nums">
                     <span className={`font-semibold ${pnlColor}`}>{trade.rMultiple > 0 ? "+" : ""}{trade.rMultiple.toFixed(2)}R</span>
-                  </td>
-                  <td className={td}>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${
-                      trade.grade === "A+" ? "bg-[rgba(99,220,180,0.15)] text-[#63dcb4]" :
-                      trade.grade === "A"  ? "bg-[rgba(99,220,180,0.08)] text-[#63dcb4]" :
-                      trade.grade === "B"  ? "bg-[rgba(250,204,21,0.1)] text-[#facc15]" :
-                      trade.grade === "C"  ? "bg-[rgba(251,146,60,0.1)] text-[#fb923c]" :
-                                             "bg-[rgba(248,113,113,0.1)] text-[#f87171]"
-                    }`}>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] font-bold ${
+                        trade.grade === "A+" ? "text-emerald-700 border-emerald-300 bg-emerald-50" :
+                        trade.grade === "A"  ? "text-emerald-600 border-emerald-200 bg-emerald-50/50" :
+                        trade.grade === "B"  ? "text-amber-600 border-amber-200 bg-amber-50" :
+                        trade.grade === "C"  ? "text-orange-500 border-orange-200 bg-orange-50" :
+                                               "text-red-500 border-red-200 bg-red-50"
+                      }`}
+                    >
                       {trade.grade}
-                    </span>
-                  </td>
-                  <td className={td} onClick={e => e.stopPropagation()}>
-                    <div className="flex gap-3">
-                      <button onClick={() => onEdit(trade)} className="text-[9px] text-[#484f58] hover:text-[#60a5fa] tracking-widest uppercase transition-colors">Edit</button>
-                      <button onClick={() => { if (confirm(`Delete ${trade.ticker}?`)) onDelete(trade.id); }} className="text-[9px] text-[#30363d] hover:text-[#f87171] tracking-widest uppercase transition-colors">Del</button>
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[9px] tracking-widest uppercase text-gray-400 hover:text-gray-700"
+                        onClick={() => onEdit(trade)}>Edit</Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[9px] tracking-widest uppercase text-gray-300 hover:text-red-500"
+                        onClick={() => { if (confirm(`Delete ${trade.ticker}?`)) onDelete(trade.id); }}>Del</Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
+
                 {expanded && (
-                  <tr key={`${trade.id}-exp`} className="bg-[#0d1117]">
-                    <td colSpan={12} className="px-6 py-4 border-b border-[#161b22]">
+                  <TableRow key={`${trade.id}-exp`} className="bg-gray-50 hover:bg-gray-50">
+                    <TableCell colSpan={12} className="px-6 py-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {trade.notes && (
                           <div className="col-span-2">
-                            <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Notes</p>
-                            <p className="text-xs text-[#8b949e] leading-relaxed">{trade.notes}</p>
+                            <p className="text-[9px] font-semibold tracking-widest text-gray-300 uppercase mb-1">Notes</p>
+                            <p className="text-xs text-gray-600 leading-relaxed">{trade.notes}</p>
                           </div>
                         )}
                         {trade.tags && (
                           <div>
-                            <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Tags</p>
+                            <p className="text-[9px] font-semibold tracking-widest text-gray-300 uppercase mb-1.5">Tags</p>
                             <div className="flex gap-1 flex-wrap">
-                              {trade.tags.split(",").map(tag => (
-                                <span key={tag.trim()} className="text-[9px] border border-[#21262d] text-[#484f58] px-2 py-0.5 rounded-sm tracking-wide">{tag.trim()}</span>
+                              {trade.tags.split(",").map((tag) => (
+                                <Badge key={tag.trim()} variant="secondary" className="text-[9px] px-1.5">
+                                  {tag.trim()}
+                                </Badge>
                               ))}
                             </div>
                           </div>
                         )}
                         <div>
-                          <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Stop Loss</p>
-                          <p className="text-xs text-[#f87171]">₹{trade.stopLoss.toLocaleString("en-IN")}</p>
+                          <p className="text-[9px] font-semibold tracking-widest text-gray-300 uppercase mb-1">Stop Loss</p>
+                          <p className="text-xs text-red-500 font-medium">₹{trade.stopLoss.toLocaleString("en-IN")}</p>
                         </div>
                         {trade.exitDate && (
                           <div>
-                            <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Exit Date</p>
-                            <p className="text-xs text-[#8b949e]">{trade.exitDate}</p>
+                            <p className="text-[9px] font-semibold tracking-widest text-gray-300 uppercase mb-1">Exit Date</p>
+                            <p className="text-xs text-gray-600">{trade.exitDate}</p>
                           </div>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
               </>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -3,14 +3,8 @@
 import { useEffect, useRef } from "react";
 import { Trade } from "../types";
 import {
-  Chart,
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Filler,
-  Tooltip,
+  Chart, LineController, LineElement, PointElement,
+  LinearScale, CategoryScale, Filler, Tooltip,
 } from "chart.js";
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
@@ -23,21 +17,21 @@ export default function EquityCurveChart({ trades }: Props) {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const closed = [...trades].filter(t => t.status === "Closed").sort((a, b) => a.date.localeCompare(b.date));
+    const closed = [...trades].filter((t) => t.status === "Closed").sort((a, b) => a.date.localeCompare(b.date));
     let cum = 0;
-    const data = closed.map(t => { cum += t.pnl; return parseFloat(cum.toFixed(2)); });
+    const data = closed.map((t) => { cum += t.pnl; return parseFloat(cum.toFixed(2)); });
     const labels = closed.map((t, i) => `#${i + 1} ${t.ticker}`);
-
     if (chartRef.current) chartRef.current.destroy();
 
     const last = data[data.length - 1] ?? 0;
-    const gradient = canvasRef.current.getContext("2d")!.createLinearGradient(0, 0, 0, 220);
+    const ctx = canvasRef.current.getContext("2d")!;
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
     if (last >= 0) {
-      gradient.addColorStop(0, "rgba(99,220,180,0.25)");
-      gradient.addColorStop(1, "rgba(99,220,180,0.01)");
+      grad.addColorStop(0, "rgba(16,185,129,0.15)");
+      grad.addColorStop(1, "rgba(16,185,129,0.01)");
     } else {
-      gradient.addColorStop(0, "rgba(248,113,113,0.25)");
-      gradient.addColorStop(1, "rgba(248,113,113,0.01)");
+      grad.addColorStop(0, "rgba(239,68,68,0.15)");
+      grad.addColorStop(1, "rgba(239,68,68,0.01)");
     }
 
     chartRef.current = new Chart(canvasRef.current, {
@@ -46,33 +40,28 @@ export default function EquityCurveChart({ trades }: Props) {
         labels,
         datasets: [{
           data,
-          borderColor: last >= 0 ? "#63dcb4" : "#f87171",
-          backgroundColor: gradient,
+          borderColor: last >= 0 ? "#10b981" : "#ef4444",
+          backgroundColor: grad,
           borderWidth: 2,
           fill: true,
           pointRadius: data.length > 25 ? 0 : 4,
-          pointBackgroundColor: last >= 0 ? "#63dcb4" : "#f87171",
-          pointBorderColor: "#0d1117",
+          pointBackgroundColor: last >= 0 ? "#10b981" : "#ef4444",
+          pointBorderColor: "#fff",
           pointBorderWidth: 2,
           tension: 0.4,
         }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: "#0d1117",
-            borderColor: "#30363d",
-            borderWidth: 1,
-            titleColor: "#8b949e",
-            bodyColor: "#e6edf3",
-            padding: 10,
-            titleFont: { family: "monospace", size: 10 },
-            bodyFont: { family: "monospace", size: 12, weight: "bold" },
+            backgroundColor: "#fff", borderColor: "#e5e7eb", borderWidth: 1,
+            titleColor: "#6b7280", bodyColor: "#111827", padding: 10,
+            titleFont: { family: "system-ui", size: 10 },
+            bodyFont: { family: "system-ui", size: 12, weight: "bold" },
             callbacks: {
-              label: ctx => {
+              label: (ctx) => {
                 const val: number = ctx.parsed.y ?? 0;
                 return ` ₹${val >= 0 ? "+" : ""}${val.toLocaleString("en-IN")}`;
               },
@@ -80,19 +69,10 @@ export default function EquityCurveChart({ trades }: Props) {
           },
         },
         scales: {
-          x: {
-            ticks: { color: "#30363d", font: { family: "monospace", size: 9 }, maxTicksLimit: 8 },
-            grid: { color: "#161b22" },
-            border: { color: "#21262d" },
-          },
+          x: { ticks: { color: "#d1d5db", font: { size: 9 }, maxTicksLimit: 8 }, grid: { color: "#f3f4f6" }, border: { color: "#e5e7eb" } },
           y: {
-            ticks: {
-              color: "#484f58",
-              font: { family: "monospace", size: 9 },
-              callback: val => val != null ? `₹${Number(val).toLocaleString("en-IN")}` : "",
-            },
-            grid: { color: "#161b22" },
-            border: { color: "#21262d" },
+            ticks: { color: "#9ca3af", font: { size: 9 }, callback: (val) => val != null ? `₹${Number(val).toLocaleString("en-IN")}` : "" },
+            grid: { color: "#f3f4f6" }, border: { color: "#e5e7eb" },
           },
         },
       },
@@ -100,8 +80,8 @@ export default function EquityCurveChart({ trades }: Props) {
     return () => { chartRef.current?.destroy(); };
   }, [trades]);
 
-  if (!trades.filter(t => t.status === "Closed").length)
-    return <div className="h-52 flex items-center justify-center"><p className="text-[#30363d] text-[10px] tracking-widest uppercase">No closed trades yet</p></div>;
+  if (!trades.filter((t) => t.status === "Closed").length)
+    return <div className="h-52 flex items-center justify-center"><p className="text-gray-200 text-xs">No closed trades yet</p></div>;
 
   return <div className="h-52"><canvas ref={canvasRef} /></div>;
 }

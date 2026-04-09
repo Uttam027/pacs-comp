@@ -11,9 +11,15 @@ import SetupPerformanceChart from "./components/SetupPerformanceChart";
 import RMultipleChart from "./components/RMultipleChart";
 import MonthlyPnlChart from "./components/MonthlyPnlChart";
 import { Trade } from "./types";
-
-const CARD = "bg-[#0d1117] border border-[#21262d] p-4 rounded-md";
-const LABEL = "text-[9px] tracking-widest text-[#484f58] uppercase mb-3 font-mono";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function TradeLogPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -38,13 +44,14 @@ export default function TradeLogPage() {
   };
 
   const updateTrade = (trade: Trade) => {
-    persist(trades.map(t => t.id === trade.id ? trade : t));
+    persist(trades.map((t) => (t.id === trade.id ? trade : t)));
     setEditingTrade(null);
+    setShowForm(false);
   };
 
-  const deleteTrade = (id: string) => persist(trades.filter(t => t.id !== id));
+  const deleteTrade = (id: string) => persist(trades.filter((t) => t.id !== id));
 
-  const filteredTrades = trades.filter(t => {
+  const filteredTrades = trades.filter((t) => {
     const setupOk = filterSetup === "All" || t.setup === filterSetup;
     const resultOk =
       filterResult === "All" ||
@@ -54,105 +61,94 @@ export default function TradeLogPage() {
     return setupOk && resultOk;
   });
 
-  const setups = ["All", ...Array.from(new Set(trades.map(t => t.setup).filter(Boolean)))];
+  const setups = ["All", ...Array.from(new Set(trades.map((t) => t.setup).filter(Boolean)))];
 
   return (
-    <div className="min-h-screen bg-[#010409] text-[#e6edf3] font-mono">
-
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="border-b border-[#21262d] px-6 py-4 flex items-center justify-between bg-[#0d1117]">
-        <div className="flex items-center gap-4">
-          <div className="w-1 h-8 bg-gradient-to-b from-[#63dcb4] to-[#3b82f6] rounded-full" />
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-sm font-bold tracking-[0.2em] text-[#e6edf3] uppercase">Trade Logbook</h1>
-            <p className="text-[9px] text-[#484f58] tracking-widest mt-0.5 uppercase">Personal · Minervini Method</p>
+            <h1 className="text-lg font-bold tracking-tight text-gray-900">Trade Logbook</h1>
+            <p className="text-xs text-gray-400 tracking-widest uppercase mt-0.5">Personal · Minervani Method</p>
           </div>
+          <Button
+            onClick={() => { setShowForm(true); setEditingTrade(null); }}
+            className="text-xs tracking-widest uppercase"
+          >
+            + Log Trade
+          </Button>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingTrade(null); }}
-          className="bg-gradient-to-r from-[#63dcb4] to-[#3b82f6] text-[#010409] text-[10px] font-bold px-5 py-2 tracking-widest uppercase rounded hover:opacity-90 transition-opacity"
-        >
-          + Log Trade
-        </button>
       </div>
 
-      <div className="px-6 py-6 space-y-5 max-w-[1600px] mx-auto">
+      <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-5">
 
         {/* Stats */}
         <StatsCards trades={filteredTrades} />
 
-        {/* Row 1: Equity Curve (wide) + Win/Loss donut */}
+        {/* Row 1: Equity Curve + Donut */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className={`${CARD} lg:col-span-2`}>
-            <p className={LABEL}>Equity Curve</p>
+          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Equity Curve</p>
             <EquityCurveChart trades={filteredTrades} />
           </div>
-          <div className={CARD}>
-            <p className={LABEL}>Win / Loss / BE</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Win / Loss / BE</p>
             <WinLossChart trades={filteredTrades} />
           </div>
         </div>
 
-        {/* Row 2: P&L per trade bar + Monthly P&L */}
+        {/* Row 2: P&L bars + Monthly */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className={CARD}>
-            <p className={LABEL}>P&amp;L per Trade</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L per Trade</p>
             <PnlBarChart trades={filteredTrades} />
           </div>
-          <div className={CARD}>
-            <p className={LABEL}>Monthly P&amp;L</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Monthly P&amp;L</p>
             <MonthlyPnlChart trades={filteredTrades} />
           </div>
         </div>
 
-        {/* Row 3: R-Multiple bar + Setup Performance horizontal bar */}
+        {/* Row 3: R-Multiple + Setup Performance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className={CARD}>
-            <p className={LABEL}>R-Multiple per Trade</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">R-Multiple per Trade</p>
             <RMultipleChart trades={filteredTrades} />
           </div>
-          <div className={CARD}>
-            <p className={LABEL}>P&amp;L by Setup</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L by Setup</p>
             <SetupPerformanceChart trades={filteredTrades} />
           </div>
         </div>
 
+        <Separator />
+
         {/* Filters */}
-        <div className="flex gap-3 items-center flex-wrap pt-1">
-          <span className="text-[9px] text-[#484f58] tracking-widest uppercase">Filter:</span>
-          <div className="flex gap-1">
-            {["All", "Win", "Loss", "BE"].map(r => (
-              <button
-                key={r}
-                onClick={() => setFilterResult(r)}
-                className={`text-[9px] px-3 py-1 tracking-widest uppercase border rounded transition-all ${
-                  filterResult === r
-                    ? r === "Win" ? "bg-[rgba(99,220,180,0.15)] text-[#63dcb4] border-[#63dcb4]"
-                    : r === "Loss" ? "bg-[rgba(248,113,113,0.15)] text-[#f87171] border-[#f87171]"
-                    : "bg-[#21262d] text-[#e6edf3] border-[#30363d]"
-                    : "border-[#21262d] text-[#484f58] hover:border-[#30363d] hover:text-[#8b949e]"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1 flex-wrap">
-            {setups.map(s => (
-              <button
-                key={s}
-                onClick={() => setFilterSetup(s)}
-                className={`text-[9px] px-3 py-1 tracking-widest uppercase border rounded transition-all ${
-                  filterSetup === s
-                    ? "bg-[rgba(59,130,246,0.15)] text-[#60a5fa] border-[#3b82f6]"
-                    : "border-[#21262d] text-[#484f58] hover:border-[#30363d] hover:text-[#8b949e]"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          <span className="ml-auto text-[9px] text-[#30363d] tracking-widest">
+        <div className="flex gap-2 items-center flex-wrap">
+          <span className="text-xs text-gray-400 font-medium mr-1">Filter:</span>
+          {["All", "Win", "Loss", "BE"].map((r) => (
+            <Badge
+              key={r}
+              variant={filterResult === r ? "default" : "outline"}
+              className="cursor-pointer text-[10px] tracking-widest uppercase"
+              onClick={() => setFilterResult(r)}
+            >
+              {r}
+            </Badge>
+          ))}
+          <Separator orientation="vertical" className="h-5 mx-1" />
+          {setups.map((s) => (
+            <Badge
+              key={s}
+              variant={filterSetup === s ? "secondary" : "outline"}
+              className="cursor-pointer text-[10px] tracking-widest uppercase"
+              onClick={() => setFilterSetup(s)}
+            >
+              {s}
+            </Badge>
+          ))}
+          <span className="ml-auto text-xs text-gray-400">
             {filteredTrades.length} trade{filteredTrades.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -160,36 +156,26 @@ export default function TradeLogPage() {
         {/* Table */}
         <TradeTable
           trades={filteredTrades}
-          onEdit={t => { setEditingTrade(t); setShowForm(true); }}
+          onEdit={(t) => { setEditingTrade(t); setShowForm(true); }}
           onDelete={deleteTrade}
         />
       </div>
 
-      {/* Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d1117] border border-[#30363d] w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-lg shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#21262d]">
-              <h2 className="text-xs font-bold tracking-widest uppercase text-[#e6edf3]">
-                {editingTrade ? "Edit Trade" : "Log New Trade"}
-              </h2>
-              <button
-                onClick={() => { setShowForm(false); setEditingTrade(null); }}
-                className="text-[#484f58] hover:text-[#e6edf3] text-xl leading-none transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6">
-              <TradeForm
-                initial={editingTrade}
-                onSubmit={editingTrade ? updateTrade : addTrade}
-                onCancel={() => { setShowForm(false); setEditingTrade(null); }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Dialog */}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingTrade(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm tracking-widest uppercase font-bold">
+              {editingTrade ? "Edit Trade" : "Log New Trade"}
+            </DialogTitle>
+          </DialogHeader>
+          <TradeForm
+            initial={editingTrade}
+            onSubmit={editingTrade ? updateTrade : addTrade}
+            onCancel={() => { setShowForm(false); setEditingTrade(null); }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

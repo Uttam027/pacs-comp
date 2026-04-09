@@ -14,11 +14,10 @@ export default function WinLossChart({ trades }: Props) {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const closed = trades.filter(t => t.status === "Closed");
-    const wins = closed.filter(t => t.pnl > 0).length;
-    const losses = closed.filter(t => t.pnl < 0).length;
-    const be = closed.filter(t => t.pnl === 0).length;
-
+    const closed = trades.filter((t) => t.status === "Closed");
+    const wins = closed.filter((t) => t.pnl > 0).length;
+    const losses = closed.filter((t) => t.pnl < 0).length;
+    const be = closed.filter((t) => t.pnl === 0).length;
     if (chartRef.current) chartRef.current.destroy();
 
     chartRef.current = new Chart(canvasRef.current, {
@@ -27,37 +26,24 @@ export default function WinLossChart({ trades }: Props) {
         labels: ["Win", "Loss", "BE"],
         datasets: [{
           data: [wins, losses, be],
-          backgroundColor: ["rgba(99,220,180,0.15)", "rgba(248,113,113,0.15)", "rgba(139,148,158,0.1)"],
-          borderColor: ["#63dcb4", "#f87171", "#484f58"],
+          backgroundColor: ["#d1fae5", "#fee2e2", "#f3f4f6"],
+          borderColor: ["#10b981", "#ef4444", "#d1d5db"],
           borderWidth: 2,
-          hoverBackgroundColor: ["rgba(99,220,180,0.3)", "rgba(248,113,113,0.3)", "rgba(139,148,158,0.2)"],
+          hoverBackgroundColor: ["#a7f3d0", "#fecaca", "#e5e7eb"],
         }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "70%",
+        responsive: true, maintainAspectRatio: false, cutout: "68%",
         plugins: {
           legend: {
             position: "bottom",
-            labels: {
-              color: "#484f58",
-              font: { family: "monospace", size: 9 },
-              boxWidth: 8,
-              padding: 14,
-            },
+            labels: { color: "#6b7280", font: { size: 9 }, boxWidth: 8, padding: 14 },
           },
           tooltip: {
-            backgroundColor: "#0d1117",
-            borderColor: "#30363d",
-            borderWidth: 1,
-            titleColor: "#8b949e",
-            bodyColor: "#e6edf3",
-            padding: 10,
-            titleFont: { family: "monospace", size: 10 },
-            bodyFont: { family: "monospace", size: 12 },
+            backgroundColor: "#fff", borderColor: "#e5e7eb", borderWidth: 1,
+            titleColor: "#6b7280", bodyColor: "#111827", padding: 10,
             callbacks: {
-              label: ctx => {
+              label: (ctx) => {
                 const total = wins + losses + be;
                 const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0";
                 return ` ${ctx.parsed} trades (${pct}%)`;
@@ -70,8 +56,8 @@ export default function WinLossChart({ trades }: Props) {
     return () => { chartRef.current?.destroy(); };
   }, [trades]);
 
-  if (!trades.filter(t => t.status === "Closed").length)
-    return <div className="h-52 flex items-center justify-center"><p className="text-[#30363d] text-[10px] tracking-widest uppercase">No data</p></div>;
+  if (!trades.filter((t) => t.status === "Closed").length)
+    return <div className="h-52 flex items-center justify-center"><p className="text-gray-200 text-xs">No data</p></div>;
 
   return <div className="h-52"><canvas ref={canvasRef} /></div>;
 }
