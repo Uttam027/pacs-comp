@@ -4,57 +4,56 @@ import { useEffect, useRef } from "react";
 import { Trade } from "../types";
 import {
   Chart,
-  LineController,
-  LineElement,
-  PointElement,
+  BarController,
+  BarElement,
   LinearScale,
   CategoryScale,
-  Filler,
   Tooltip,
 } from "chart.js";
 
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
+Chart.register(BarController, BarElement, LinearScale, CategoryScale, Tooltip);
 
 interface Props { trades: Trade[] }
 
-export default function EquityCurveChart({ trades }: Props) {
+export default function MonthlyPnlChart({ trades }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const closed = [...trades].filter(t => t.status === "Closed").sort((a, b) => a.date.localeCompare(b.date));
-    let cum = 0;
-    const data = closed.map(t => { cum += t.pnl; return parseFloat(cum.toFixed(2)); });
-    const labels = closed.map((t, i) => `#${i + 1} ${t.ticker}`);
+    const closed = trades.filter(t => t.status === "Closed");
+
+    const monthMap: Record<string, number> = {};
+    closed.forEach(t => {
+      const month = t.date.slice(0, 7); // YYYY-MM
+      monthMap[month] = (monthMap[month] ?? 0) + t.pnl;
+    });
+
+    const labels = Object.keys(monthMap).sort();
+    const data = labels.map(m => parseFloat(monthMap[m].toFixed(2)));
+    const colors = data.map(v => v >= 0 ? "rgba(99,220,180,0.7)" : "rgba(248,113,113,0.7)");
+    const borders = data.map(v => v >= 0 ? "#63dcb4" : "#f87171");
+
+    // Format labels as "Jan 25"
+    const formattedLabels = labels.map(l => {
+      const [y, m] = l.split("-");
+      const d = new Date(parseInt(y), parseInt(m) - 1);
+      return d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    });
 
     if (chartRef.current) chartRef.current.destroy();
 
-    const last = data[data.length - 1] ?? 0;
-    const gradient = canvasRef.current.getContext("2d")!.createLinearGradient(0, 0, 0, 220);
-    if (last >= 0) {
-      gradient.addColorStop(0, "rgba(99,220,180,0.25)");
-      gradient.addColorStop(1, "rgba(99,220,180,0.01)");
-    } else {
-      gradient.addColorStop(0, "rgba(248,113,113,0.25)");
-      gradient.addColorStop(1, "rgba(248,113,113,0.01)");
-    }
-
     chartRef.current = new Chart(canvasRef.current, {
-      type: "line",
+      type: "bar",
       data: {
-        labels,
+        labels: formattedLabels,
         datasets: [{
           data,
-          borderColor: last >= 0 ? "#63dcb4" : "#f87171",
-          backgroundColor: gradient,
-          borderWidth: 2,
-          fill: true,
-          pointRadius: data.length > 25 ? 0 : 4,
-          pointBackgroundColor: last >= 0 ? "#63dcb4" : "#f87171",
-          pointBorderColor: "#0d1117",
-          pointBorderWidth: 2,
-          tension: 0.4,
+          backgroundColor: colors,
+          borderColor: borders,
+          borderWidth: 1,
+          borderRadius: 4,
+          borderSkipped: false,
         }],
       },
       options: {
@@ -81,8 +80,8 @@ export default function EquityCurveChart({ trades }: Props) {
         },
         scales: {
           x: {
-            ticks: { color: "#30363d", font: { family: "monospace", size: 9 }, maxTicksLimit: 8 },
-            grid: { color: "#161b22" },
+            ticks: { color: "#8b949e", font: { family: "monospace", size: 9 } },
+            grid: { display: false },
             border: { color: "#21262d" },
           },
           y: {
@@ -101,7 +100,7 @@ export default function EquityCurveChart({ trades }: Props) {
   }, [trades]);
 
   if (!trades.filter(t => t.status === "Closed").length)
-    return <div className="h-52 flex items-center justify-center"><p className="text-[#30363d] text-[10px] tracking-widest uppercase">No closed trades yet</p></div>;
+    return <div className="h-52 flex items-center justify-center"><p className="text-[#30363d] text-[10px] tracking-widest uppercase">No data</p></div>;
 
   return <div className="h-52"><canvas ref={canvasRef} /></div>;
 }

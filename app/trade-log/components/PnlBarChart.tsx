@@ -4,57 +4,41 @@ import { useEffect, useRef } from "react";
 import { Trade } from "../types";
 import {
   Chart,
-  LineController,
-  LineElement,
-  PointElement,
+  BarController,
+  BarElement,
   LinearScale,
   CategoryScale,
-  Filler,
   Tooltip,
 } from "chart.js";
 
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
+Chart.register(BarController, BarElement, LinearScale, CategoryScale, Tooltip);
 
 interface Props { trades: Trade[] }
 
-export default function EquityCurveChart({ trades }: Props) {
+export default function PnlBarChart({ trades }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
     const closed = [...trades].filter(t => t.status === "Closed").sort((a, b) => a.date.localeCompare(b.date));
-    let cum = 0;
-    const data = closed.map(t => { cum += t.pnl; return parseFloat(cum.toFixed(2)); });
+    const data = closed.map(t => t.pnl);
     const labels = closed.map((t, i) => `#${i + 1} ${t.ticker}`);
+    const colors = data.map(v => v >= 0 ? "rgba(99,220,180,0.75)" : "rgba(248,113,113,0.75)");
+    const borders = data.map(v => v >= 0 ? "#63dcb4" : "#f87171");
 
     if (chartRef.current) chartRef.current.destroy();
 
-    const last = data[data.length - 1] ?? 0;
-    const gradient = canvasRef.current.getContext("2d")!.createLinearGradient(0, 0, 0, 220);
-    if (last >= 0) {
-      gradient.addColorStop(0, "rgba(99,220,180,0.25)");
-      gradient.addColorStop(1, "rgba(99,220,180,0.01)");
-    } else {
-      gradient.addColorStop(0, "rgba(248,113,113,0.25)");
-      gradient.addColorStop(1, "rgba(248,113,113,0.01)");
-    }
-
     chartRef.current = new Chart(canvasRef.current, {
-      type: "line",
+      type: "bar",
       data: {
         labels,
         datasets: [{
           data,
-          borderColor: last >= 0 ? "#63dcb4" : "#f87171",
-          backgroundColor: gradient,
-          borderWidth: 2,
-          fill: true,
-          pointRadius: data.length > 25 ? 0 : 4,
-          pointBackgroundColor: last >= 0 ? "#63dcb4" : "#f87171",
-          pointBorderColor: "#0d1117",
-          pointBorderWidth: 2,
-          tension: 0.4,
+          backgroundColor: colors,
+          borderColor: borders,
+          borderWidth: 1,
+          borderRadius: 3,
         }],
       },
       options: {
@@ -81,8 +65,8 @@ export default function EquityCurveChart({ trades }: Props) {
         },
         scales: {
           x: {
-            ticks: { color: "#30363d", font: { family: "monospace", size: 9 }, maxTicksLimit: 8 },
-            grid: { color: "#161b22" },
+            ticks: { color: "#30363d", font: { family: "monospace", size: 9 }, maxTicksLimit: 10 },
+            grid: { display: false },
             border: { color: "#21262d" },
           },
           y: {

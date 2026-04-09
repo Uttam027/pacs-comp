@@ -2,19 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { Trade } from "../types";
-import {
-  Chart,
-  DoughnutController,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from "chart.js";
 
 Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
-interface Props {
-  trades: Trade[];
-}
+interface Props { trades: Trade[] }
 
 export default function WinLossChart({ trades }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -22,11 +14,10 @@ export default function WinLossChart({ trades }: Props) {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-
-    const closed = trades.filter((t) => t.status === "Closed");
-    const wins = closed.filter((t) => t.pnl > 0).length;
-    const losses = closed.filter((t) => t.pnl < 0).length;
-    const be = closed.filter((t) => t.pnl === 0).length;
+    const closed = trades.filter(t => t.status === "Closed");
+    const wins = closed.filter(t => t.pnl > 0).length;
+    const losses = closed.filter(t => t.pnl < 0).length;
+    const be = closed.filter(t => t.pnl === 0).length;
 
     if (chartRef.current) chartRef.current.destroy();
 
@@ -34,40 +25,39 @@ export default function WinLossChart({ trades }: Props) {
       type: "doughnut",
       data: {
         labels: ["Win", "Loss", "BE"],
-        datasets: [
-          {
-            data: [wins, losses, be],
-            backgroundColor: ["#166534", "#7f1d1d", "#292524"],
-            borderColor: ["#4ade80", "#f87171", "#444"],
-            borderWidth: 1,
-            hoverBackgroundColor: ["#15803d", "#991b1b", "#3a3a3a"],
-          },
-        ],
+        datasets: [{
+          data: [wins, losses, be],
+          backgroundColor: ["rgba(99,220,180,0.15)", "rgba(248,113,113,0.15)", "rgba(139,148,158,0.1)"],
+          borderColor: ["#63dcb4", "#f87171", "#484f58"],
+          borderWidth: 2,
+          hoverBackgroundColor: ["rgba(99,220,180,0.3)", "rgba(248,113,113,0.3)", "rgba(139,148,158,0.2)"],
+        }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: "65%",
+        cutout: "70%",
         plugins: {
           legend: {
             position: "bottom",
             labels: {
-              color: "#555",
+              color: "#484f58",
               font: { family: "monospace", size: 9 },
               boxWidth: 8,
-              padding: 12,
+              padding: 14,
             },
           },
           tooltip: {
-            backgroundColor: "#111",
-            borderColor: "#2a2a2a",
+            backgroundColor: "#0d1117",
+            borderColor: "#30363d",
             borderWidth: 1,
-            titleColor: "#888",
-            bodyColor: "#e8e8e8",
+            titleColor: "#8b949e",
+            bodyColor: "#e6edf3",
+            padding: 10,
             titleFont: { family: "monospace", size: 10 },
-            bodyFont: { family: "monospace", size: 11 },
+            bodyFont: { family: "monospace", size: 12 },
             callbacks: {
-              label: (ctx) => {
+              label: ctx => {
                 const total = wins + losses + be;
                 const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0";
                 return ` ${ctx.parsed} trades (${pct}%)`;
@@ -77,17 +67,11 @@ export default function WinLossChart({ trades }: Props) {
         },
       },
     });
-
     return () => { chartRef.current?.destroy(); };
   }, [trades]);
 
-  if (trades.filter((t) => t.status === "Closed").length === 0) {
-    return (
-      <div className="h-40 flex items-center justify-center">
-        <p className="text-[#222] text-[10px] tracking-widest uppercase">No data</p>
-      </div>
-    );
-  }
+  if (!trades.filter(t => t.status === "Closed").length)
+    return <div className="h-52 flex items-center justify-center"><p className="text-[#30363d] text-[10px] tracking-widest uppercase">No data</p></div>;
 
-  return <div className="h-48"><canvas ref={canvasRef} /></div>;
+  return <div className="h-52"><canvas ref={canvasRef} /></div>;
 }

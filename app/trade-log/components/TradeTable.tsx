@@ -17,7 +17,7 @@ export default function TradeTable({ trades, onEdit, onDelete }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(key); setSortDir("desc"); }
   };
 
@@ -29,148 +29,140 @@ export default function TradeTable({ trades, onEdit, onDelete }: Props) {
   });
 
   const SortIcon = ({ k }: { k: SortKey }) =>
-    sortKey === k ? (
-      <span className="ml-1 text-[#888]">{sortDir === "asc" ? "↑" : "↓"}</span>
-    ) : (
-      <span className="ml-1 text-[#333]">↕</span>
-    );
+    sortKey === k
+      ? <span className="ml-1 text-[#63dcb4]">{sortDir === "asc" ? "↑" : "↓"}</span>
+      : <span className="ml-1 text-[#21262d]">↕</span>;
 
-  const thCls = "text-[9px] tracking-widest uppercase text-[#555] text-left px-3 py-2 cursor-pointer hover:text-[#888] whitespace-nowrap select-none border-b border-[#1a1a1a]";
-  const tdCls = "px-3 py-2.5 text-xs border-b border-[#111]";
+  const th = "text-[9px] tracking-widest uppercase text-[#484f58] text-left px-3 py-2.5 cursor-pointer hover:text-[#8b949e] whitespace-nowrap select-none border-b border-[#21262d] transition-colors";
+  const td = "px-3 py-3 text-xs border-b border-[#161b22]";
 
-  if (trades.length === 0) {
-    return (
-      <div className="border border-[#1f1f1f] bg-[#0f0f0f] p-12 text-center">
-        <p className="text-[#333] text-xs tracking-widest uppercase">No trades logged yet.</p>
-        <p className="text-[#222] text-[10px] tracking-widest mt-1">Click &quot;+ New Trade&quot; to begin.</p>
-      </div>
-    );
-  }
+  if (!trades.length) return (
+    <div className="border border-[#21262d] bg-[#0d1117] rounded-md p-16 text-center">
+      <p className="text-[#30363d] text-xs tracking-widest uppercase">No trades logged yet</p>
+      <p className="text-[#21262d] text-[10px] tracking-widest mt-1">Click &quot;+ Log Trade&quot; to begin</p>
+    </div>
+  );
 
   return (
-    <div className="border border-[#1f1f1f] bg-[#0f0f0f] overflow-x-auto">
-      <table className="w-full min-w-[900px]">
+    <div className="border border-[#21262d] bg-[#0d1117] rounded-md overflow-x-auto">
+      <table className="w-full min-w-[960px]">
         <thead>
-          <tr className="bg-[#0a0a0a]">
-            <th className={thCls} onClick={() => handleSort("date")}>Date <SortIcon k="date" /></th>
-            <th className={thCls} onClick={() => handleSort("ticker")}>Ticker <SortIcon k="ticker" /></th>
-            <th className={thCls} onClick={() => handleSort("direction")}>Dir <SortIcon k="direction" /></th>
-            <th className={thCls} onClick={() => handleSort("setup")}>Setup <SortIcon k="setup" /></th>
-            <th className={thCls} onClick={() => handleSort("entry")}>Entry <SortIcon k="entry" /></th>
-            <th className={thCls} onClick={() => handleSort("exit")}>Exit <SortIcon k="exit" /></th>
-            <th className={thCls} onClick={() => handleSort("shares")}>Qty <SortIcon k="shares" /></th>
-            <th className={thCls} onClick={() => handleSort("pnl")}>P&amp;L ₹ <SortIcon k="pnl" /></th>
-            <th className={thCls} onClick={() => handleSort("pnlPct")}>% <SortIcon k="pnlPct" /></th>
-            <th className={thCls} onClick={() => handleSort("rMultiple")}>R <SortIcon k="rMultiple" /></th>
-            <th className={thCls} onClick={() => handleSort("grade")}>Grade <SortIcon k="grade" /></th>
-            <th className={thCls}>Actions</th>
+          <tr className="bg-[#010409]">
+            {([
+              ["date", "Date"],
+              ["ticker", "Ticker"],
+              ["direction", "Dir"],
+              ["setup", "Setup"],
+              ["entry", "Entry"],
+              ["exit", "Exit"],
+              ["shares", "Qty"],
+              ["pnl", "P&L ₹"],
+              ["pnlPct", "%"],
+              ["rMultiple", "R"],
+              ["grade", "Grade"],
+            ] as [SortKey, string][]).map(([key, label]) => (
+              <th key={key} className={th} onClick={() => handleSort(key)}>
+                {label}<SortIcon k={key} />
+              </th>
+            ))}
+            <th className={th}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {sorted.map((trade) => {
-            const isWin = trade.pnl > 0;
-            const isLoss = trade.pnl < 0;
+          {sorted.map(trade => {
+            const win = trade.pnl > 0;
+            const loss = trade.pnl < 0;
             const expanded = expandedId === trade.id;
+            const pnlColor = win ? "text-[#63dcb4]" : loss ? "text-[#f87171]" : "text-[#484f58]";
+
             return (
               <>
                 <tr
                   key={trade.id}
-                  className="hover:bg-[#111] transition-colors cursor-pointer"
+                  className={`hover:bg-[#161b22] transition-colors cursor-pointer ${expanded ? "bg-[#161b22]" : ""}`}
                   onClick={() => setExpandedId(expanded ? null : trade.id)}
                 >
-                  <td className={tdCls + " text-[#666]"}>{trade.date}</td>
-                  <td className={tdCls}>
-                    <span className="font-bold text-white tracking-wider">{trade.ticker}</span>
+                  <td className={`${td} text-[#484f58] tabular-nums`}>{trade.date}</td>
+                  <td className={td}>
+                    <span className="font-bold text-[#e6edf3] tracking-wider">{trade.ticker}</span>
                     {trade.status === "Open" && (
-                      <span className="ml-2 text-[8px] bg-[#1a3a2a] text-[#4ade80] px-1.5 py-0.5 tracking-widest uppercase">Open</span>
+                      <span className="ml-2 text-[8px] bg-[rgba(99,220,180,0.1)] text-[#63dcb4] border border-[rgba(99,220,180,0.3)] px-1.5 py-0.5 tracking-widest uppercase rounded-sm">Open</span>
                     )}
                   </td>
-                  <td className={tdCls}>
-                    <span className={`text-[9px] tracking-widest uppercase px-1.5 py-0.5 ${trade.direction === "Long" ? "bg-[#1a2a3a] text-[#60a5fa]" : "bg-[#2a1a1a] text-[#f87171]"}`}>
+                  <td className={td}>
+                    <span className={`text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded-sm ${
+                      trade.direction === "Long"
+                        ? "bg-[rgba(59,130,246,0.1)] text-[#60a5fa] border border-[rgba(59,130,246,0.3)]"
+                        : "bg-[rgba(248,113,113,0.1)] text-[#f87171] border border-[rgba(248,113,113,0.3)]"
+                    }`}>
                       {trade.direction}
                     </span>
                   </td>
-                  <td className={tdCls + " text-[#888] text-[10px] tracking-wide"}>{trade.setup}</td>
-                  <td className={tdCls + " tabular-nums text-[#aaa]"}>₹{trade.entry.toLocaleString("en-IN")}</td>
-                  <td className={tdCls + " tabular-nums text-[#aaa]"}>
-                    {trade.exit ? `₹${trade.exit.toLocaleString("en-IN")}` : <span className="text-[#333]">—</span>}
+                  <td className={`${td} text-[#8b949e] text-[10px] tracking-wide`}>{trade.setup}</td>
+                  <td className={`${td} tabular-nums text-[#8b949e]`}>₹{trade.entry.toLocaleString("en-IN")}</td>
+                  <td className={`${td} tabular-nums text-[#8b949e]`}>
+                    {trade.exit ? `₹${trade.exit.toLocaleString("en-IN")}` : <span className="text-[#30363d]">—</span>}
                   </td>
-                  <td className={tdCls + " tabular-nums text-[#666]"}>{trade.shares}</td>
-                  <td className={tdCls + " tabular-nums font-bold"}>
-                    <span className={isWin ? "text-[#4ade80]" : isLoss ? "text-[#f87171]" : "text-[#888]"}>
-                      {trade.pnl > 0 ? "+" : ""}₹{Math.abs(trade.pnl).toLocaleString("en-IN")}
+                  <td className={`${td} tabular-nums text-[#484f58]`}>{trade.shares}</td>
+                  <td className={`${td} tabular-nums font-bold`}>
+                    <span className={pnlColor}>
+                      {trade.pnl > 0 ? "+" : trade.pnl < 0 ? "−" : ""}₹{Math.abs(trade.pnl).toLocaleString("en-IN")}
                     </span>
                   </td>
-                  <td className={tdCls + " tabular-nums"}>
-                    <span className={isWin ? "text-[#4ade80]" : isLoss ? "text-[#f87171]" : "text-[#888]"}>
-                      {trade.pnlPct > 0 ? "+" : ""}{trade.pnlPct.toFixed(2)}%
-                    </span>
+                  <td className={`${td} tabular-nums`}>
+                    <span className={pnlColor}>{trade.pnlPct > 0 ? "+" : ""}{trade.pnlPct.toFixed(2)}%</span>
                   </td>
-                  <td className={tdCls + " tabular-nums"}>
-                    <span className={isWin ? "text-[#4ade80]" : isLoss ? "text-[#f87171]" : "text-[#888]"}>
-                      {trade.rMultiple > 0 ? "+" : ""}{trade.rMultiple.toFixed(2)}R
-                    </span>
+                  <td className={`${td} tabular-nums`}>
+                    <span className={`font-semibold ${pnlColor}`}>{trade.rMultiple > 0 ? "+" : ""}{trade.rMultiple.toFixed(2)}R</span>
                   </td>
-                  <td className={tdCls}>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 ${
-                      trade.grade === "A+" || trade.grade === "A" ? "text-[#4ade80]" :
-                      trade.grade === "B" ? "text-[#facc15]" :
-                      trade.grade === "C" ? "text-[#f97316]" : "text-[#f87171]"
+                  <td className={td}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${
+                      trade.grade === "A+" ? "bg-[rgba(99,220,180,0.15)] text-[#63dcb4]" :
+                      trade.grade === "A"  ? "bg-[rgba(99,220,180,0.08)] text-[#63dcb4]" :
+                      trade.grade === "B"  ? "bg-[rgba(250,204,21,0.1)] text-[#facc15]" :
+                      trade.grade === "C"  ? "bg-[rgba(251,146,60,0.1)] text-[#fb923c]" :
+                                             "bg-[rgba(248,113,113,0.1)] text-[#f87171]"
                     }`}>
                       {trade.grade}
                     </span>
                   </td>
-                  <td className={tdCls}>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onEdit(trade)}
-                        className="text-[10px] text-[#555] hover:text-[#aaa] tracking-widest uppercase transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete ${trade.ticker}?`)) onDelete(trade.id);
-                        }}
-                        className="text-[10px] text-[#3a1a1a] hover:text-[#f87171] tracking-widest uppercase transition-colors"
-                      >
-                        Del
-                      </button>
+                  <td className={td} onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-3">
+                      <button onClick={() => onEdit(trade)} className="text-[9px] text-[#484f58] hover:text-[#60a5fa] tracking-widest uppercase transition-colors">Edit</button>
+                      <button onClick={() => { if (confirm(`Delete ${trade.ticker}?`)) onDelete(trade.id); }} className="text-[9px] text-[#30363d] hover:text-[#f87171] tracking-widest uppercase transition-colors">Del</button>
                     </div>
                   </td>
                 </tr>
                 {expanded && (
-                  <tr key={`${trade.id}-exp`} className="bg-[#0a0a0a]">
-                    <td colSpan={12} className="px-6 py-4 border-b border-[#111]">
-                      <div className="grid grid-cols-2 gap-4">
+                  <tr key={`${trade.id}-exp`} className="bg-[#0d1117]">
+                    <td colSpan={12} className="px-6 py-4 border-b border-[#161b22]">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {trade.notes && (
-                          <div>
-                            <p className="text-[9px] text-[#444] tracking-widest uppercase mb-1">Notes</p>
-                            <p className="text-xs text-[#888] leading-relaxed">{trade.notes}</p>
+                          <div className="col-span-2">
+                            <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Notes</p>
+                            <p className="text-xs text-[#8b949e] leading-relaxed">{trade.notes}</p>
                           </div>
                         )}
                         {trade.tags && (
                           <div>
-                            <p className="text-[9px] text-[#444] tracking-widest uppercase mb-1">Tags</p>
+                            <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Tags</p>
                             <div className="flex gap-1 flex-wrap">
-                              {trade.tags.split(",").map((tag) => (
-                                <span key={tag.trim()} className="text-[9px] border border-[#2a2a2a] text-[#555] px-2 py-0.5 tracking-wide">
-                                  {tag.trim()}
-                                </span>
+                              {trade.tags.split(",").map(tag => (
+                                <span key={tag.trim()} className="text-[9px] border border-[#21262d] text-[#484f58] px-2 py-0.5 rounded-sm tracking-wide">{tag.trim()}</span>
                               ))}
                             </div>
                           </div>
                         )}
+                        <div>
+                          <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Stop Loss</p>
+                          <p className="text-xs text-[#f87171]">₹{trade.stopLoss.toLocaleString("en-IN")}</p>
+                        </div>
                         {trade.exitDate && (
                           <div>
-                            <p className="text-[9px] text-[#444] tracking-widest uppercase mb-1">Exit Date</p>
-                            <p className="text-xs text-[#888]">{trade.exitDate}</p>
+                            <p className="text-[9px] text-[#30363d] tracking-widest uppercase mb-1">Exit Date</p>
+                            <p className="text-xs text-[#8b949e]">{trade.exitDate}</p>
                           </div>
                         )}
-                        <div>
-                          <p className="text-[9px] text-[#444] tracking-widest uppercase mb-1">Stop Loss</p>
-                          <p className="text-xs text-[#888]">₹{trade.stopLoss.toLocaleString("en-IN")}</p>
-                        </div>
                       </div>
                     </td>
                   </tr>
