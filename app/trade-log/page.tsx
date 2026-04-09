@@ -21,35 +21,52 @@ import {
 
 export default function TradeLogPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filterSetup, setFilterSetup] = useState("All");
   const [filterResult, setFilterResult] = useState("All");
 
+  // Load from API on mount
   useEffect(() => {
-    const stored = localStorage.getItem("trade-log-v2");
-    if (stored) setTrades(JSON.parse(stored));
+    fetch("/api/trade-log")
+      .then((r) => r.json())
+      .then((data: Trade[]) => setTrades(Array.isArray(data) ? data : []))
+      .catch(() => setTrades([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const persist = useCallback((updated: Trade[]) => {
-    setTrades(updated);
-    localStorage.setItem("trade-log-v2", JSON.stringify(updated));
+  const addTrade = useCallback(async (trade: Trade) => {
+    const res = await fetch("/api/trade-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(trade),
+    });
+    if (res.ok) {
+      setTrades((prev) => [...prev, trade]);
+      setShowForm(false);
+    }
   }, []);
 
-  const addTrade = (trade: Trade) => {
-    persist([...trades, trade]);
-    setShowForm(false);
-  };
+  const updateTrade = useCallback(async (trade: Trade) => {
+    const res = await fetch("/api/trade-log", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(trade),
+    });
+    if (res.ok) {
+      setTrades((prev) => prev.map((t) => t.id === trade.id ? trade : t));
+      setSelectedTrade(trade);
+    }
+  }, []);
 
-  const updateTrade = (trade: Trade) => {
-    persist(trades.map((t) => t.id === trade.id ? trade : t));
-    setSelectedTrade(trade);
-  };
-
-  const deleteTrade = (id: string) => {
-    persist(trades.filter((t) => t.id !== id));
-    setSelectedTrade(null);
-  };
+  const deleteTrade = useCallback(async (id: string) => {
+    const res = await fetch(`/api/trade-log?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTrades((prev) => prev.filter((t) => t.id !== id));
+      setSelectedTrade(null);
+    }
+  }, []);
 
   const filteredTrades = trades.filter((t) => {
     const setupOk = filterSetup === "All" || t.setup === filterSetup;
@@ -89,68 +106,72 @@ export default function TradeLogPage() {
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-5">
 
-        <StatsCards trades={filteredTrades} />
-
-        {/* Charts row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Equity Curve</p>
-            <EquityCurveChart trades={filteredTrades} />
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-sm text-gray-400 tracking-widest uppercase animate-pulse">Loading trades...</p>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Win / Loss / BE</p>
-            <WinLossChart trades={filteredTrades} />
-          </div>
-        </div>
+        ) : (
+          <>
+            <StatsCards trades={filteredTrades} />
 
-        {/* Charts row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L per Trade</p>
-            <PnlBarChart trades={filteredTrades} />
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Monthly P&amp;L</p>
-            <MonthlyPnlChart trades={filteredTrades} />
-          </div>
-        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Equity Curve</p>
+                <EquityCurveChart trades={filteredTrades} />
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Win / Loss / BE</p>
+                <WinLossChart trades={filteredTrades} />
+              </div>
+            </div>
 
-        {/* Charts row 3 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">R-Multiple per Trade</p>
-            <RMultipleChart trades={filteredTrades} />
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L by Setup</p>
-            <SetupPerformanceChart trades={filteredTrades} />
-          </div>
-        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L per Trade</p>
+                <PnlBarChart trades={filteredTrades} />
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">Monthly P&amp;L</p>
+                <MonthlyPnlChart trades={filteredTrades} />
+              </div>
+            </div>
 
-        <Separator />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">R-Multiple per Trade</p>
+                <RMultipleChart trades={filteredTrades} />
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-3">P&amp;L by Setup</p>
+                <SetupPerformanceChart trades={filteredTrades} />
+              </div>
+            </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 items-center flex-wrap">
-          <span className="text-xs text-gray-400 font-medium mr-1">Filter:</span>
-          {["All", "Open", "Closed", "Win", "Loss"].map((r) => (
-            <Badge key={r} variant={filterResult === r ? "default" : "outline"}
-              className="cursor-pointer text-[10px] tracking-widest uppercase" onClick={() => setFilterResult(r)}>
-              {r}
-            </Badge>
-          ))}
-          <Separator orientation="vertical" className="h-5 mx-1" />
-          {setups.map((s) => (
-            <Badge key={s} variant={filterSetup === s ? "secondary" : "outline"}
-              className="cursor-pointer text-[10px] tracking-widest uppercase" onClick={() => setFilterSetup(s)}>
-              {s}
-            </Badge>
-          ))}
-          <span className="ml-auto text-xs text-gray-400">
-            {filteredTrades.length} trade{filteredTrades.length !== 1 ? "s" : ""}
-          </span>
-        </div>
+            <Separator />
 
-        <TradeTable trades={filteredTrades} onOpen={setSelectedTrade} />
+            <div className="flex gap-2 items-center flex-wrap">
+              <span className="text-xs text-gray-400 font-medium mr-1">Filter:</span>
+              {["All", "Open", "Closed", "Win", "Loss"].map((r) => (
+                <Badge key={r} variant={filterResult === r ? "default" : "outline"}
+                  className="cursor-pointer text-[10px] tracking-widest uppercase" onClick={() => setFilterResult(r)}>
+                  {r}
+                </Badge>
+              ))}
+              <Separator orientation="vertical" className="h-5 mx-1" />
+              {setups.map((s) => (
+                <Badge key={s} variant={filterSetup === s ? "secondary" : "outline"}
+                  className="cursor-pointer text-[10px] tracking-widest uppercase" onClick={() => setFilterSetup(s)}>
+                  {s}
+                </Badge>
+              ))}
+              <span className="ml-auto text-xs text-gray-400">
+                {filteredTrades.length} trade{filteredTrades.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            <TradeTable trades={filteredTrades} onOpen={setSelectedTrade} />
+          </>
+        )}
       </div>
 
       {/* Open new trade dialog */}
