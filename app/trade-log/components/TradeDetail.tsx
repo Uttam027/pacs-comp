@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Trade, EntryLeg, ExitLeg, computeTrade } from "../types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+interface QuoteData {
+  price: number;
+  prevClose: number;
+  change: number;
+  changePct: number;
+  marketState: string;
+}
+
 interface Props {
   trade: Trade;
   onUpdate: (trade: Trade) => void;
@@ -19,8 +27,13 @@ interface Props {
   onClose: () => void;
 }
 
-const SETUPS = ["VCP", "Breakout", "Pullback", "Base Breakout", "Earnings", "Reversal", "Other"];
 const GRADES = ["A+", "A", "B", "C", "D"];
+
+// Guess Yahoo ticker suffix: if no dot, append .NS for NSE India
+function toYahooTicker(ticker: string): string {
+  if (ticker.includes(".")) return ticker;
+  return `${ticker}.NS`;
+}
 
 export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Props) {
   const today = new Date().toISOString().split("T")[0];
@@ -34,9 +47,52 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
   const [tags, setTags] = useState(trade.tags ?? "");
   const [stopLoss, setStopLoss] = useState(String(trade.stopLoss));
 
+  // Live quote state
+  const [quote, setQuote] = useState<QuoteData | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
+
+  const fetchQuote = useCallback(async () => {
+    if (trade.status !== "Open" || !trade.ticker) return;
+    setQuoteLoading(true);
+    setQuoteError("");
+    try {
+      const yticker = toYahooTicker(trade.ticker);
+      const res = await fetch(`/api/trade-log/quote?ticker=${encodeURIComponent(yticker)}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setQuote(data);
+    } catch (e) {
+      setQuoteError(String(e));
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, [trade.ticker, trade.status]);
+
+  // Auto-fetch on open
+  useEffect(() => { fetchQuote(); }, [fetchQuote]);
+
+  // Unrealized P&L based on live price
+  const unrealizedPnl = quote && trade.openShares > 0 && trade.avgEntry > 0
+    ? trade.direction === "Long"
+      ? (quote.price - trade.avgEntry) * trade.openShares
+      : (trade.avgEntry - quote.price) * trade.openShares
+    : null;
+
+  const unrealizedPct = quote && trade.avgEntry > 0
+    ? trade.direction === "Long"
+      ? ((quote.price - trade.avgEntry) / trade.avgEntry) * 100
+      : ((trade.avgEntry - quote.price) / trade.avgEntry) * 100
+    : null;
+
+  const totalPnl = (trade.realizedPnl ?? 0) + (unrealizedPnl ?? 0);
+
   const win = trade.realizedPnl > 0;
   const loss = trade.realizedPnl < 0;
   const pnlColor = win ? "text-emerald-600" : loss ? "text-red-500" : "text-gray-400";
+  const unrealColor = unrealizedPnl != null
+    ? unrealizedPnl > 0 ? "text-emerald-600" : unrealizedPnl < 0 ? "text-red-500" : "text-gray-400"
+    : "text-gray-400";
 
   const addEntryLeg = () => {
     if (!newEntry.price || !newEntry.shares) return;
@@ -55,8 +111,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
 
   const addExitLeg = () => {
     if (!newExit.price || !newExit.shares) return;
-    const maxShares = trade.openShares;
-    const shares = Math.min(parseInt(newExit.shares), maxShares);
+    const shares = Math.min(parseInt(newExit.shares), trade.openShares);
     const leg: ExitLeg = {
       id: crypto.randomUUID(),
       date: newExit.date,
@@ -70,42 +125,81 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
     setShowAddExit(false);
   };
 
-  const removeEntryLeg = (id: string) => {
-    const updated = computeTrade({ ...trade, entries: trade.entries.filter((e) => e.id !== id) });
-    onUpdate(updated);
-  };
+  const removeEntryLeg = (id: string) =>
+    onUpdate(computeTrade({ ...trade, entries: trade.entries.filter((e) => e.id !== id) }));
 
-  const removeExitLeg = (id: string) => {
-    const updated = computeTrade({ ...trade, exits: trade.exits.filter((e) => e.id !== id) });
-    onUpdate(updated);
-  };
+  const removeExitLeg = (id: string) =>
+    onUpdate(computeTrade({ ...trade, exits: trade.exits.filter((e) => e.id !== id) }));
 
-  const saveInfo = () => {
-    const updated = computeTrade({
-      ...trade,
-      grade,
-      notes,
-      tags,
-      stopLoss: parseFloat(stopLoss) || trade.stopLoss,
-    });
-    onUpdate(updated);
-  };
+  const saveInfo = () =>
+    onUpdate(computeTrade({ ...trade, grade, notes, tags, stopLoss: parseFloat(stopLoss) || trade.stopLoss }));
 
-  const progressPct = trade.totalShares > 0
-    ? Math.round((trade.exitedShares / trade.totalShares) * 100)
-    : 0;
+  const progressPct = trade.totalShares > 0 ? Math.round((trade.exitedShares / trade.totalShares) * 100) : 0;
+  const fmt = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-5">
+
+      {/* Live price banner — only for open trades */}
+      {trade.status === "Open" && (
+        <div className="rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div>
+                <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-0.5">Live Price · {toYahooTicker(trade.ticker)}</p>
+                {quoteLoading && <p className="text-xs text-gray-400 animate-pulse">Fetching...</p>}
+                {quoteError && <p className="text-xs text-red-400">Could not fetch price</p>}
+                {quote && !quoteLoading && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-gray-900">₹{quote.price.toFixed(2)}</span>
+                    <span className={`text-xs font-semibold ${quote.change >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePct >= 0 ? "+" : ""}{quote.changePct.toFixed(2)}%)
+                    </span>
+                    <Badge variant="outline" className={`text-[9px] ${quote.marketState === "REGULAR" ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-400 border-gray-200"}`}>
+                      {quote.marketState === "REGULAR" ? "Market Open" : "Market Closed"}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={fetchQuote} disabled={quoteLoading}
+              className="text-[9px] tracking-widest uppercase text-gray-400 h-6 px-2">
+              ↻ Refresh
+            </Button>
+          </div>
+
+          {/* Unrealized P&L */}
+          {quote && trade.openShares > 0 && unrealizedPnl != null && (
+            <div className="mt-3 grid grid-cols-3 gap-3 border-t border-blue-100 pt-3">
+              <div>
+                <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Unrealized P&L</p>
+                <p className={`text-sm font-bold tabular-nums ${unrealColor}`}>
+                  {unrealizedPnl >= 0 ? "+" : "−"}{fmt(unrealizedPnl)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Unrealized %</p>
+                <p className={`text-sm font-bold tabular-nums ${unrealColor}`}>
+                  {unrealizedPct != null ? `${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(2)}%` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Total P&L (incl. open)</p>
+                <p className={`text-sm font-bold tabular-nums ${totalPnl >= 0 ? "text-emerald-600" : totalPnl < 0 ? "text-red-500" : "text-gray-400"}`}>
+                  {totalPnl >= 0 ? "+" : "−"}{fmt(totalPnl)}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Summary bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
             label: "Realized P&L",
-            value: trade.realizedPnl !== 0
-              ? `${win ? "+" : "−"}₹${Math.abs(trade.realizedPnl).toLocaleString("en-IN")}`
-              : "—",
+            value: trade.realizedPnl !== 0 ? `${win ? "+" : "−"}${fmt(trade.realizedPnl)}` : "—",
             cls: pnlColor,
           },
           {
@@ -131,26 +225,20 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
         ))}
       </div>
 
-      {/* Exit progress bar */}
+      {/* Exit progress */}
       <div className="space-y-1">
         <div className="flex justify-between text-[10px] text-gray-400">
           <span>{trade.exitedShares} of {trade.totalShares} shares exited</span>
           <span>{progressPct}%</span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-1.5">
-          <div
-            className={`h-1.5 rounded-full transition-all ${progressPct === 100 ? "bg-emerald-500" : "bg-blue-400"}`}
-            style={{ width: `${progressPct}%` }}
-          />
+          <div className={`h-1.5 rounded-full transition-all ${progressPct === 100 ? "bg-emerald-500" : "bg-blue-400"}`}
+            style={{ width: `${progressPct}%` }} />
         </div>
         <div className="flex gap-2 items-center text-[10px] text-gray-400">
           <span className="text-blue-500 font-medium">{trade.openShares} open</span>
           <span>·</span>
           <span>{trade.exitedShares} exited</span>
-          <span>·</span>
-          <Badge variant="outline" className={`text-[9px] py-0 px-1.5 ${trade.status === "Open" ? "text-blue-600 border-blue-200 bg-blue-50" : "text-emerald-600 border-emerald-200 bg-emerald-50"}`}>
-            {trade.status}
-          </Badge>
         </div>
       </div>
 
@@ -168,21 +256,41 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
           )}
         </div>
 
-        <div className="space-y-1">
-          {trade.entries.map((leg, i) => (
-            <div key={leg.id} className="grid grid-cols-12 gap-2 items-center text-xs bg-blue-50/50 border border-blue-100 rounded px-2 py-1.5">
-              <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{i + 1}</span>
-              <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
-              <span className="col-span-3 font-semibold text-gray-800">₹{leg.price.toLocaleString("en-IN")}</span>
-              <span className="col-span-2 text-gray-600">{leg.shares} sh</span>
-              <span className="col-span-3 text-gray-400 truncate">{leg.notes}</span>
-              <div className="col-span-1 flex justify-end">
-                {trade.status === "Open" && (
-                  <button onClick={() => removeEntryLeg(leg.id)} className="text-gray-300 hover:text-red-400 text-xs leading-none">×</button>
-                )}
-              </div>
-            </div>
+        {/* Header row */}
+        <div className="grid grid-cols-12 gap-2 px-2 mb-0.5">
+          {["#", "Date", "Price", "Shares", "Amount", "Note", ""].map((h) => (
+            <span key={h} className={`text-[9px] font-semibold tracking-widest text-gray-300 uppercase ${h === "Price" || h === "Amount" ? "col-span-2" : h === "Date" ? "col-span-2" : h === "Note" ? "col-span-2" : "col-span-1"}`}>{h}</span>
           ))}
+        </div>
+
+        <div className="space-y-1">
+          {trade.entries.map((leg, i) => {
+            const amount = leg.price * leg.shares;
+            return (
+              <div key={leg.id} className="grid grid-cols-12 gap-2 items-center text-xs bg-blue-50/50 border border-blue-100 rounded px-2 py-1.5">
+                <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{i + 1}</span>
+                <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
+                <span className="col-span-2 font-semibold text-gray-800">₹{leg.price.toFixed(2)}</span>
+                <span className="col-span-1 text-gray-600">{leg.shares}</span>
+                <span className="col-span-3 font-semibold text-blue-700">₹{amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                <span className="col-span-2 text-gray-400 truncate text-[9px]">{leg.notes}</span>
+                <div className="col-span-1 flex justify-end">
+                  {trade.status === "Open" && (
+                    <button onClick={() => removeEntryLeg(leg.id)} className="text-gray-300 hover:text-red-400 leading-none">×</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {/* Total entry amount */}
+          <div className="grid grid-cols-12 gap-2 px-2 pt-1 border-t border-gray-100">
+            <span className="col-span-3 text-[9px] text-gray-400 uppercase tracking-wider">Total</span>
+            <span className="col-span-2"></span>
+            <span className="col-span-1 text-xs font-semibold text-gray-700">{trade.totalShares}</span>
+            <span className="col-span-3 text-xs font-bold text-blue-700">
+              ₹{(trade.avgEntry * trade.totalShares).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+            </span>
+          </div>
         </div>
 
         {showAddEntry && (
@@ -202,8 +310,12 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
                 onChange={(e) => setNewEntry((p) => ({ ...p, shares: e.target.value }))} className="h-8 text-xs" />
             </div>
             <div className="col-span-3 space-y-1">
-              <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Note</Label>
-              <Input placeholder="optional" value={newEntry.notes}
+              <Label className="text-[9px] text-gray-400 uppercase tracking-wider">
+                Amount: {newEntry.price && newEntry.shares
+                  ? `₹${(parseFloat(newEntry.price) * parseInt(newEntry.shares)).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+                  : "—"}
+              </Label>
+              <Input placeholder="note" value={newEntry.notes}
                 onChange={(e) => setNewEntry((p) => ({ ...p, notes: e.target.value }))} className="h-8 text-xs" />
             </div>
             <div className="col-span-1">
@@ -221,7 +333,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
           <p className="text-[10px] font-semibold tracking-widest text-gray-500 uppercase">Exit Lots</p>
           {trade.openShares > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-gray-400">max: {trade.openShares} sh</span>
+              <span className="text-[9px] text-gray-400">{trade.openShares} sh remaining</span>
               <Button type="button" variant="outline" size="sm" onClick={() => setShowAddExit((v) => !v)}
                 className="h-6 text-[10px] tracking-widest uppercase px-2">
                 {showAddExit ? "Cancel" : "+ Exit Lot"}
@@ -230,32 +342,55 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
           )}
         </div>
 
-        {trade.exits.length === 0 && (
+        {trade.exits.length === 0 ? (
           <p className="text-[10px] text-gray-300 italic">No exits yet</p>
-        )}
+        ) : (
+          <>
+            {/* Header */}
+            <div className="grid grid-cols-12 gap-2 px-2 mb-0.5">
+              {["#", "Date", "Price", "Shares", "Proceeds", "P&L", "Note", ""].map((h, i) => (
+                <span key={i} className={`text-[9px] font-semibold tracking-widest text-gray-300 uppercase ${h === "Price" || h === "Proceeds" || h === "P&L" ? "col-span-2" : h === "Date" ? "col-span-2" : h === "Note" ? "col-span-1" : "col-span-1"}`}>{h}</span>
+              ))}
+            </div>
 
-        <div className="space-y-1">
-          {trade.exits.map((leg, i) => {
-            const entryCost = trade.avgEntry * leg.shares;
-            const proceeds = leg.price * leg.shares;
-            const legPnl = trade.direction === "Long" ? proceeds - entryCost : entryCost - proceeds;
-            return (
-              <div key={leg.id} className={`grid grid-cols-12 gap-2 items-center text-xs rounded px-2 py-1.5 border ${legPnl >= 0 ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"}`}>
-                <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{i + 1}</span>
-                <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
-                <span className="col-span-3 font-semibold text-gray-800">₹{leg.price.toLocaleString("en-IN")}</span>
-                <span className="col-span-2 text-gray-600">{leg.shares} sh</span>
-                <span className={`col-span-2 font-semibold tabular-nums ${legPnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                  {legPnl >= 0 ? "+" : "−"}₹{Math.abs(legPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+            <div className="space-y-1">
+              {trade.exits.map((leg, i) => {
+                const proceeds = leg.price * leg.shares;
+                const legPnl = trade.direction === "Long"
+                  ? (leg.price - trade.avgEntry) * leg.shares
+                  : (trade.avgEntry - leg.price) * leg.shares;
+                return (
+                  <div key={leg.id} className={`grid grid-cols-12 gap-2 items-center text-xs rounded px-2 py-1.5 border ${legPnl >= 0 ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"}`}>
+                    <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{i + 1}</span>
+                    <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
+                    <span className="col-span-2 font-semibold text-gray-800">₹{leg.price.toFixed(2)}</span>
+                    <span className="col-span-1 text-gray-600">{leg.shares}</span>
+                    <span className="col-span-2 text-gray-700">₹{proceeds.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                    <span className={`col-span-2 font-bold tabular-nums ${legPnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      {legPnl >= 0 ? "+" : "−"}₹{Math.abs(legPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="col-span-1 text-gray-400 truncate text-[9px]">{leg.notes}</span>
+                    <div className="col-span-1 flex justify-end">
+                      <button onClick={() => removeExitLeg(leg.id)} className="text-gray-300 hover:text-red-400 leading-none">×</button>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Total row */}
+              <div className="grid grid-cols-12 gap-2 px-2 pt-1 border-t border-gray-100">
+                <span className="col-span-3 text-[9px] text-gray-400 uppercase tracking-wider">Total</span>
+                <span className="col-span-2"></span>
+                <span className="col-span-1 text-xs font-semibold text-gray-700">{trade.exitedShares}</span>
+                <span className="col-span-2 text-xs font-semibold text-gray-700">
+                  ₹{(trade.avgExit * trade.exitedShares).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </span>
-                <span className="col-span-1 text-gray-400 truncate text-[9px]">{leg.notes}</span>
-                <div className="col-span-1 flex justify-end">
-                  <button onClick={() => removeExitLeg(leg.id)} className="text-gray-300 hover:text-red-400 text-xs leading-none">×</button>
-                </div>
+                <span className={`col-span-2 text-xs font-bold ${win ? "text-emerald-600" : loss ? "text-red-500" : "text-gray-400"}`}>
+                  {trade.realizedPnl !== 0 ? `${win ? "+" : "−"}₹${Math.abs(trade.realizedPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
+                </span>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </>
+        )}
 
         {showAddExit && (
           <div className="grid grid-cols-12 gap-2 items-end bg-gray-50 rounded-md p-2 border border-gray-200">
@@ -274,8 +409,17 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
                 onChange={(e) => setNewExit((p) => ({ ...p, shares: e.target.value }))} className="h-8 text-xs" />
             </div>
             <div className="col-span-3 space-y-1">
-              <Label className="text-[9px] text-gray-400 uppercase tracking-wider">Note</Label>
-              <Input placeholder="optional" value={newExit.notes}
+              <Label className="text-[9px] text-gray-400 uppercase tracking-wider">
+                P&L preview: {newExit.price && newExit.shares && trade.avgEntry > 0
+                  ? (() => {
+                      const pnl = trade.direction === "Long"
+                        ? (parseFloat(newExit.price) - trade.avgEntry) * parseInt(newExit.shares)
+                        : (trade.avgEntry - parseFloat(newExit.price)) * parseInt(newExit.shares);
+                      return `${pnl >= 0 ? "+" : "−"}₹${Math.abs(pnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+                    })()
+                  : "—"}
+              </Label>
+              <Input placeholder="note" value={newExit.notes}
                 onChange={(e) => setNewExit((p) => ({ ...p, notes: e.target.value }))} className="h-8 text-xs" />
             </div>
             <div className="col-span-1">
@@ -287,7 +431,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
 
       <Separator />
 
-      {/* Meta info */}
+      {/* Meta */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Stop Loss ₹</Label>
@@ -320,7 +464,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
         <Button type="button" variant="ghost"
           onClick={() => { if (confirm(`Delete ${trade.ticker}?`)) { onDelete(trade.id); onClose(); } }}
           className="ml-auto text-[10px] tracking-widest uppercase text-gray-300 hover:text-red-500">
-          Delete Trade
+          Delete
         </Button>
       </div>
     </div>
