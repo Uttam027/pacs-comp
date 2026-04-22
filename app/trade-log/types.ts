@@ -43,6 +43,7 @@ export interface Trade {
   notes?: string;           // overall trade notes
   tags?: string;
   grade?: string;           // A+, A, B, C, D
+  yahooTicker?: string;     // override for Yahoo Finance symbol (e.g. futures: NIFTY25APRFUT.NS)
 
   // Derived dates
   firstEntryDate: string;

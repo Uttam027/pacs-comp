@@ -46,19 +46,21 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
   const [notes, setNotes] = useState(trade.notes ?? "");
   const [tags, setTags] = useState(trade.tags ?? "");
   const [stopLoss, setStopLoss] = useState(String(trade.stopLoss));
+  const [ticker, setTicker] = useState(trade.ticker);
+  const [yahooTicker, setYahooTicker] = useState(trade.yahooTicker ?? "");
 
   // Live quote state
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
 
-  const fetchQuote = useCallback(async () => {
+  const fetchQuote = useCallback(async (overrideYahoo?: string) => {
     if (trade.status !== "Open" || !trade.ticker) return;
     setQuoteLoading(true);
     setQuoteError("");
     try {
-      const yticker = toYahooTicker(trade.ticker);
-      const res = await fetch(`/api/trade-log/quote?ticker=${encodeURIComponent(yticker)}`);
+      const symbol = overrideYahoo ?? yahooTicker ?? toYahooTicker(trade.ticker);
+      const res = await fetch(`/api/trade-log/quote?ticker=${encodeURIComponent(symbol)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setQuote(data);
@@ -67,6 +69,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
     } finally {
       setQuoteLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trade.ticker, trade.status]);
 
   // Auto-fetch on open
@@ -162,7 +165,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
                 )}
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={fetchQuote} disabled={quoteLoading}
+            <Button variant="ghost" size="sm" onClick={() => fetchQuote()} disabled={quoteLoading}
               className="text-[9px] tracking-widest uppercase text-gray-400 h-6 px-2">
               ↻ Refresh
             </Button>
