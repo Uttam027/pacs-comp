@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Pencil, Check, X } from "lucide-react";
 
 interface QuoteData {
   price: number;
@@ -29,12 +30,173 @@ interface Props {
 
 const GRADES = ["A+", "A", "B", "C", "D"];
 
-// Guess Yahoo ticker suffix: if no dot, append .NS for NSE India
 function toYahooTicker(ticker: string): string {
   if (ticker.includes(".")) return ticker;
   return `${ticker}.NS`;
 }
 
+// ── Inline-editable entry row ────────────────────────────────────────────────
+function EntryRow({
+  leg,
+  index,
+  avgEntry,
+  canEdit,
+  onSave,
+  onRemove,
+}: {
+  leg: EntryLeg;
+  index: number;
+  avgEntry: number;
+  canEdit: boolean;
+  onSave: (updated: EntryLeg) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ date: leg.date, price: String(leg.price), shares: String(leg.shares), notes: leg.notes ?? "" });
+
+  const commit = () => {
+    const price = parseFloat(draft.price);
+    const shares = parseInt(draft.shares);
+    if (!price || !shares) return;
+    onSave({ ...leg, date: draft.date, price, shares, notes: draft.notes });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setDraft({ date: leg.date, price: String(leg.price), shares: String(leg.shares), notes: leg.notes ?? "" });
+    setEditing(false);
+  };
+
+  const amount = leg.price * leg.shares;
+
+  if (editing) {
+    return (
+      <div className="grid grid-cols-12 gap-1.5 items-center bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+        <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{index + 1}</span>
+        <Input type="date" value={draft.date} onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
+          className="col-span-2 h-7 text-xs px-1" />
+        <Input type="number" step="0.01" value={draft.price} onChange={(e) => setDraft((p) => ({ ...p, price: e.target.value }))}
+          className="col-span-2 h-7 text-xs px-1" placeholder="Price" />
+        <Input type="number" value={draft.shares} onChange={(e) => setDraft((p) => ({ ...p, shares: e.target.value }))}
+          className="col-span-2 h-7 text-xs px-1" placeholder="Shares" />
+        <Input value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))}
+          className="col-span-3 h-7 text-xs px-1" placeholder="Note" />
+        <div className="col-span-2 flex gap-1 justify-end">
+          <button onClick={commit} className="p-1 rounded text-emerald-600 hover:bg-emerald-100"><Check className="w-3.5 h-3.5" /></button>
+          <button onClick={cancel} className="p-1 rounded text-gray-400 hover:bg-gray-100"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-12 gap-2 items-center text-xs bg-blue-50/50 border border-blue-100 rounded px-2 py-1.5">
+      <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{index + 1}</span>
+      <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
+      <span className="col-span-2 font-semibold text-gray-800">₹{leg.price.toFixed(2)}</span>
+      <span className="col-span-1 text-gray-600">{leg.shares}</span>
+      <span className="col-span-3 font-semibold text-blue-700">₹{amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+      <span className="col-span-2 text-gray-400 truncate text-[9px]">{leg.notes}</span>
+      <div className="col-span-1 flex gap-1 justify-end">
+        {canEdit && (
+          <button onClick={() => setEditing(true)} className="text-gray-300 hover:text-amber-500 leading-none">
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
+        <button onClick={() => onRemove(leg.id)} className="text-gray-300 hover:text-red-400 leading-none">×</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Inline-editable exit row ─────────────────────────────────────────────────
+function ExitRow({
+  leg,
+  index,
+  avgEntry,
+  direction,
+  onSave,
+  onRemove,
+}: {
+  leg: ExitLeg;
+  index: number;
+  avgEntry: number;
+  direction: Trade["direction"];
+  onSave: (updated: ExitLeg) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ date: leg.date, price: String(leg.price), shares: String(leg.shares), notes: leg.notes ?? "" });
+
+  const commit = () => {
+    const price = parseFloat(draft.price);
+    const shares = parseInt(draft.shares);
+    if (!price || !shares) return;
+    onSave({ ...leg, date: draft.date, price, shares, notes: draft.notes });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setDraft({ date: leg.date, price: String(leg.price), shares: String(leg.shares), notes: leg.notes ?? "" });
+    setEditing(false);
+  };
+
+  const legPnl = direction === "Long"
+    ? (leg.price - avgEntry) * leg.shares
+    : (avgEntry - leg.price) * leg.shares;
+  const proceeds = leg.price * leg.shares;
+
+  if (editing) {
+    const draftPrice = parseFloat(draft.price) || 0;
+    const draftShares = parseInt(draft.shares) || 0;
+    const previewPnl = direction === "Long"
+      ? (draftPrice - avgEntry) * draftShares
+      : (avgEntry - draftPrice) * draftShares;
+
+    return (
+      <div className="grid grid-cols-12 gap-1.5 items-center bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+        <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{index + 1}</span>
+        <Input type="date" value={draft.date} onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
+          className="col-span-2 h-7 text-xs px-1" />
+        <Input type="number" step="0.01" value={draft.price} onChange={(e) => setDraft((p) => ({ ...p, price: e.target.value }))}
+          className="col-span-2 h-7 text-xs px-1" placeholder="Price" />
+        <Input type="number" value={draft.shares} onChange={(e) => setDraft((p) => ({ ...p, shares: e.target.value }))}
+          className="col-span-1 h-7 text-xs px-1" placeholder="Shares" />
+        <span className={`col-span-2 text-[10px] font-bold tabular-nums ${previewPnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+          {draftPrice && draftShares ? `${previewPnl >= 0 ? "+" : "−"}₹${Math.abs(previewPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
+        </span>
+        <Input value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))}
+          className="col-span-2 h-7 text-xs px-1" placeholder="Note" />
+        <div className="col-span-2 flex gap-1 justify-end">
+          <button onClick={commit} className="p-1 rounded text-emerald-600 hover:bg-emerald-100"><Check className="w-3.5 h-3.5" /></button>
+          <button onClick={cancel} className="p-1 rounded text-gray-400 hover:bg-gray-100"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid grid-cols-12 gap-2 items-center text-xs rounded px-2 py-1.5 border ${legPnl >= 0 ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"}`}>
+      <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{index + 1}</span>
+      <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
+      <span className="col-span-2 font-semibold text-gray-800">₹{leg.price.toFixed(2)}</span>
+      <span className="col-span-1 text-gray-600">{leg.shares}</span>
+      <span className="col-span-2 text-gray-700">₹{proceeds.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+      <span className={`col-span-2 font-bold tabular-nums ${legPnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+        {legPnl >= 0 ? "+" : "−"}₹{Math.abs(legPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+      </span>
+      <span className="col-span-1 text-gray-400 truncate text-[9px]">{leg.notes}</span>
+      <div className="col-span-1 flex gap-1 justify-end">
+        <button onClick={() => setEditing(true)} className="text-gray-300 hover:text-amber-500 leading-none">
+          <Pencil className="w-3 h-3" />
+        </button>
+        <button onClick={() => onRemove(leg.id)} className="text-gray-300 hover:text-red-400 leading-none">×</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
 export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Props) {
   const today = new Date().toISOString().split("T")[0];
 
@@ -46,10 +208,8 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
   const [notes, setNotes] = useState(trade.notes ?? "");
   const [tags, setTags] = useState(trade.tags ?? "");
   const [stopLoss, setStopLoss] = useState(String(trade.stopLoss));
-  const [ticker, setTicker] = useState(trade.ticker);
   const [yahooTicker, setYahooTicker] = useState(trade.yahooTicker ?? "");
 
-  // Live quote state
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
@@ -72,10 +232,8 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trade.ticker, trade.status]);
 
-  // Auto-fetch on open
   useEffect(() => { fetchQuote(); }, [fetchQuote]);
 
-  // Unrealized P&L based on live price
   const unrealizedPnl = quote && trade.openShares > 0 && trade.avgEntry > 0
     ? trade.direction === "Long"
       ? (quote.price - trade.avgEntry) * trade.openShares
@@ -89,13 +247,14 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
     : null;
 
   const totalPnl = (trade.realizedPnl ?? 0) + (unrealizedPnl ?? 0);
-
   const win = trade.realizedPnl > 0;
   const loss = trade.realizedPnl < 0;
   const pnlColor = win ? "text-emerald-600" : loss ? "text-red-500" : "text-gray-400";
   const unrealColor = unrealizedPnl != null
     ? unrealizedPnl > 0 ? "text-emerald-600" : unrealizedPnl < 0 ? "text-red-500" : "text-gray-400"
     : "text-gray-400";
+
+  // ── Leg mutations ──────────────────────────────────────────────────────────
 
   const addEntryLeg = () => {
     if (!newEntry.price || !newEntry.shares) return;
@@ -106,8 +265,7 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
       shares: parseInt(newEntry.shares),
       notes: newEntry.notes,
     };
-    const updated = computeTrade({ ...trade, entries: [...trade.entries, leg] });
-    onUpdate(updated);
+    onUpdate(computeTrade({ ...trade, entries: [...trade.entries, leg] }));
     setNewEntry({ date: today, price: "", shares: "", notes: "" });
     setShowAddEntry(false);
   };
@@ -122,11 +280,16 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
       shares,
       notes: newExit.notes,
     };
-    const updated = computeTrade({ ...trade, exits: [...trade.exits, leg] });
-    onUpdate(updated);
+    onUpdate(computeTrade({ ...trade, exits: [...trade.exits, leg] }));
     setNewExit({ date: today, price: "", shares: "", notes: "" });
     setShowAddExit(false);
   };
+
+  const updateEntryLeg = (updated: EntryLeg) =>
+    onUpdate(computeTrade({ ...trade, entries: trade.entries.map((e) => e.id === updated.id ? updated : e) }));
+
+  const updateExitLeg = (updated: ExitLeg) =>
+    onUpdate(computeTrade({ ...trade, exits: trade.exits.map((e) => e.id === updated.id ? updated : e) }));
 
   const removeEntryLeg = (id: string) =>
     onUpdate(computeTrade({ ...trade, entries: trade.entries.filter((e) => e.id !== id) }));
@@ -143,27 +306,25 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
   return (
     <div className="space-y-5">
 
-      {/* Live price banner — only for open trades */}
+      {/* Live price banner */}
       {trade.status === "Open" && (
         <div className="rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div>
-                <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-0.5">Live Price · {toYahooTicker(trade.ticker)}</p>
-                {quoteLoading && <p className="text-xs text-gray-400 animate-pulse">Fetching...</p>}
-                {quoteError && <p className="text-xs text-red-400">Could not fetch price</p>}
-                {quote && !quoteLoading && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-gray-900">₹{quote.price.toFixed(2)}</span>
-                    <span className={`text-xs font-semibold ${quote.change >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                      {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePct >= 0 ? "+" : ""}{quote.changePct.toFixed(2)}%)
-                    </span>
-                    <Badge variant="outline" className={`text-[9px] ${quote.marketState === "REGULAR" ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-400 border-gray-200"}`}>
-                      {quote.marketState === "REGULAR" ? "Market Open" : "Market Closed"}
-                    </Badge>
-                  </div>
-                )}
-              </div>
+            <div>
+              <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-0.5">Live Price · {toYahooTicker(trade.ticker)}</p>
+              {quoteLoading && <p className="text-xs text-gray-400 animate-pulse">Fetching...</p>}
+              {quoteError && <p className="text-xs text-red-400">Could not fetch price</p>}
+              {quote && !quoteLoading && (
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-gray-900">₹{quote.price.toFixed(2)}</span>
+                  <span className={`text-xs font-semibold ${quote.change >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePct >= 0 ? "+" : ""}{quote.changePct.toFixed(2)}%)
+                  </span>
+                  <Badge variant="outline" className={`text-[9px] ${quote.marketState === "REGULAR" ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-400 border-gray-200"}`}>
+                    {quote.marketState === "REGULAR" ? "Market Open" : "Market Closed"}
+                  </Badge>
+                </div>
+              )}
             </div>
             <Button variant="ghost" size="sm" onClick={() => fetchQuote()} disabled={quoteLoading}
               className="text-[9px] tracking-widest uppercase text-gray-400 h-6 px-2">
@@ -171,7 +332,6 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
             </Button>
           </div>
 
-          {/* Unrealized P&L */}
           {quote && trade.openShares > 0 && unrealizedPnl != null && (
             <div className="mt-3 grid grid-cols-3 gap-3 border-t border-blue-100 pt-3">
               <div>
@@ -200,26 +360,10 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
       {/* Summary bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          {
-            label: "Realized P&L",
-            value: trade.realizedPnl !== 0 ? `${win ? "+" : "−"}${fmt(trade.realizedPnl)}` : "—",
-            cls: pnlColor,
-          },
-          {
-            label: "Avg Entry",
-            value: trade.avgEntry > 0 ? `₹${trade.avgEntry.toFixed(2)}` : "—",
-            cls: "text-gray-800",
-          },
-          {
-            label: "Avg Exit",
-            value: trade.avgExit > 0 ? `₹${trade.avgExit.toFixed(2)}` : "—",
-            cls: "text-gray-800",
-          },
-          {
-            label: "R Multiple",
-            value: trade.exitedShares > 0 ? `${trade.rMultiple >= 0 ? "+" : ""}${trade.rMultiple.toFixed(2)}R` : "—",
-            cls: pnlColor,
-          },
+          { label: "Realized P&L", value: trade.realizedPnl !== 0 ? `${win ? "+" : "−"}${fmt(trade.realizedPnl)}` : "—", cls: pnlColor },
+          { label: "Avg Entry", value: trade.avgEntry > 0 ? `₹${trade.avgEntry.toFixed(2)}` : "—", cls: "text-gray-800" },
+          { label: "Avg Exit", value: trade.avgExit > 0 ? `₹${trade.avgExit.toFixed(2)}` : "—", cls: "text-gray-800" },
+          { label: "R Multiple", value: trade.exitedShares > 0 ? `${trade.rMultiple >= 0 ? "+" : ""}${trade.rMultiple.toFixed(2)}R` : "—", cls: pnlColor },
         ].map((s) => (
           <div key={s.label} className="bg-gray-50 border border-gray-100 rounded-md px-3 py-2">
             <p className="text-[9px] font-semibold tracking-widest text-gray-400 uppercase mb-1">{s.label}</p>
@@ -250,7 +394,10 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
       {/* Entry legs */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold tracking-widest text-gray-500 uppercase">Entry Lots</p>
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest text-gray-500 uppercase">Entry Lots</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">Click <Pencil className="inline w-2.5 h-2.5" /> to edit a leg</p>
+          </div>
           {trade.status === "Open" && (
             <Button type="button" variant="outline" size="sm" onClick={() => setShowAddEntry((v) => !v)}
               className="h-6 text-[10px] tracking-widest uppercase px-2">
@@ -259,36 +406,27 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
           )}
         </div>
 
-        {/* Header row */}
         <div className="grid grid-cols-12 gap-2 px-2 mb-0.5">
-          {["#", "Date", "Price", "Shares", "Amount", "Note", ""].map((h) => (
-            <span key={h} className={`text-[9px] font-semibold tracking-widest text-gray-300 uppercase ${h === "Price" || h === "Amount" ? "col-span-2" : h === "Date" ? "col-span-2" : h === "Note" ? "col-span-2" : "col-span-1"}`}>{h}</span>
+          {["#", "Date", "Price", "Shares", "Amount", "Note", ""].map((h, i) => (
+            <span key={i} className={`text-[9px] font-semibold tracking-widest text-gray-300 uppercase ${h === "Price" || h === "Amount" ? "col-span-2" : h === "Date" ? "col-span-2" : h === "Note" ? "col-span-2" : "col-span-1"}`}>{h}</span>
           ))}
         </div>
 
         <div className="space-y-1">
-          {trade.entries.map((leg, i) => {
-            const amount = leg.price * leg.shares;
-            return (
-              <div key={leg.id} className="grid grid-cols-12 gap-2 items-center text-xs bg-blue-50/50 border border-blue-100 rounded px-2 py-1.5">
-                <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{i + 1}</span>
-                <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
-                <span className="col-span-2 font-semibold text-gray-800">₹{leg.price.toFixed(2)}</span>
-                <span className="col-span-1 text-gray-600">{leg.shares}</span>
-                <span className="col-span-3 font-semibold text-blue-700">₹{amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-                <span className="col-span-2 text-gray-400 truncate text-[9px]">{leg.notes}</span>
-                <div className="col-span-1 flex justify-end">
-                  {trade.status === "Open" && (
-                    <button onClick={() => removeEntryLeg(leg.id)} className="text-gray-300 hover:text-red-400 leading-none">×</button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {/* Total entry amount */}
+          {trade.entries.map((leg, i) => (
+            <EntryRow
+              key={leg.id}
+              leg={leg}
+              index={i}
+              avgEntry={trade.avgEntry}
+              canEdit={true}
+              onSave={updateEntryLeg}
+              onRemove={removeEntryLeg}
+            />
+          ))}
           <div className="grid grid-cols-12 gap-2 px-2 pt-1 border-t border-gray-100">
             <span className="col-span-3 text-[9px] text-gray-400 uppercase tracking-wider">Total</span>
-            <span className="col-span-2"></span>
+            <span className="col-span-2" />
             <span className="col-span-1 text-xs font-semibold text-gray-700">{trade.totalShares}</span>
             <span className="col-span-3 text-xs font-bold text-blue-700">
               ₹{(trade.avgEntry * trade.totalShares).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
@@ -333,7 +471,10 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
       {/* Exit legs */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold tracking-widest text-gray-500 uppercase">Exit Lots</p>
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest text-gray-500 uppercase">Exit Lots</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">Click <Pencil className="inline w-2.5 h-2.5" /> to edit a leg</p>
+          </div>
           {trade.openShares > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-[9px] text-gray-400">{trade.openShares} sh remaining</span>
@@ -349,7 +490,6 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
           <p className="text-[10px] text-gray-300 italic">No exits yet</p>
         ) : (
           <>
-            {/* Header */}
             <div className="grid grid-cols-12 gap-2 px-2 mb-0.5">
               {["#", "Date", "Price", "Shares", "Proceeds", "P&L", "Note", ""].map((h, i) => (
                 <span key={i} className={`text-[9px] font-semibold tracking-widest text-gray-300 uppercase ${h === "Price" || h === "Proceeds" || h === "P&L" ? "col-span-2" : h === "Date" ? "col-span-2" : h === "Note" ? "col-span-1" : "col-span-1"}`}>{h}</span>
@@ -357,32 +497,20 @@ export default function TradeDetail({ trade, onUpdate, onDelete, onClose }: Prop
             </div>
 
             <div className="space-y-1">
-              {trade.exits.map((leg, i) => {
-                const proceeds = leg.price * leg.shares;
-                const legPnl = trade.direction === "Long"
-                  ? (leg.price - trade.avgEntry) * leg.shares
-                  : (trade.avgEntry - leg.price) * leg.shares;
-                return (
-                  <div key={leg.id} className={`grid grid-cols-12 gap-2 items-center text-xs rounded px-2 py-1.5 border ${legPnl >= 0 ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"}`}>
-                    <span className="col-span-1 text-[9px] text-gray-400 font-mono">#{i + 1}</span>
-                    <span className="col-span-2 text-gray-500 font-mono">{leg.date}</span>
-                    <span className="col-span-2 font-semibold text-gray-800">₹{leg.price.toFixed(2)}</span>
-                    <span className="col-span-1 text-gray-600">{leg.shares}</span>
-                    <span className="col-span-2 text-gray-700">₹{proceeds.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-                    <span className={`col-span-2 font-bold tabular-nums ${legPnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                      {legPnl >= 0 ? "+" : "−"}₹{Math.abs(legPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                    </span>
-                    <span className="col-span-1 text-gray-400 truncate text-[9px]">{leg.notes}</span>
-                    <div className="col-span-1 flex justify-end">
-                      <button onClick={() => removeExitLeg(leg.id)} className="text-gray-300 hover:text-red-400 leading-none">×</button>
-                    </div>
-                  </div>
-                );
-              })}
-              {/* Total row */}
+              {trade.exits.map((leg, i) => (
+                <ExitRow
+                  key={leg.id}
+                  leg={leg}
+                  index={i}
+                  avgEntry={trade.avgEntry}
+                  direction={trade.direction}
+                  onSave={updateExitLeg}
+                  onRemove={removeExitLeg}
+                />
+              ))}
               <div className="grid grid-cols-12 gap-2 px-2 pt-1 border-t border-gray-100">
                 <span className="col-span-3 text-[9px] text-gray-400 uppercase tracking-wider">Total</span>
-                <span className="col-span-2"></span>
+                <span className="col-span-2" />
                 <span className="col-span-1 text-xs font-semibold text-gray-700">{trade.exitedShares}</span>
                 <span className="col-span-2 text-xs font-semibold text-gray-700">
                   ₹{(trade.avgExit * trade.exitedShares).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
