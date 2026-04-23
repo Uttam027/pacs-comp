@@ -1,7 +1,7 @@
 "use client";
 
 import { Trade } from "../types";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 
 interface Props { trades: Trade[] }
 
@@ -20,6 +20,15 @@ function TrendBadge({ value, label }: { value: number; label: string }) {
 export default function StatsCards({ trades: allTrades }: Props) {
   const closed = allTrades.filter((t) => t.status === "Closed");
   const open = allTrades.filter((t) => t.status === "Open");
+
+  // Open position metrics
+  const capitalDeployed = open.reduce((s, t) => s + t.avgEntry * t.openShares, 0);
+  const riskAtStop = open.reduce((s, t) => {
+    const riskPerShare = Math.abs(t.avgEntry - t.stopLoss);
+    return s + riskPerShare * t.openShares;
+  }, 0);
+  // Unrealized P&L based on partial exits already done (realized on open trades)
+  const openRealizedPnl = open.reduce((s, t) => s + t.realizedPnl, 0);
   const total = closed.length;
   const wins = closed.filter((t) => t.realizedPnl > 0);
   const losses = closed.filter((t) => t.realizedPnl < 0);
@@ -148,6 +157,78 @@ export default function StatsCards({ trades: allTrades }: Props) {
           </span>
         )}
       </div>
+
+      {/* Open positions panel */}
+      {open.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
+              <Activity className="w-3 h-3 text-blue-600" />
+            </div>
+            <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-widest">Open Positions</p>
+            <span className="ml-auto text-[10px] text-gray-400">no live feed · prices at entry</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="bg-blue-50 rounded-lg px-3 py-2.5">
+              <p className="text-[10px] text-blue-500 font-semibold uppercase tracking-widest mb-1">Positions</p>
+              <p className="text-lg font-bold text-blue-700 tabular-nums">{open.length}</p>
+              <p className="text-[10px] text-blue-400 mt-0.5">
+                {open.reduce((s, t) => s + t.openShares, 0).toLocaleString("en-IN")} shares
+              </p>
+            </div>
+            <div className="bg-violet-50 rounded-lg px-3 py-2.5">
+              <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-widest mb-1">Deployed</p>
+              <p className="text-lg font-bold text-violet-700 tabular-nums">
+                ₹{(capitalDeployed / 1000).toFixed(1)}k
+              </p>
+              <p className="text-[10px] text-violet-400 mt-0.5">at avg entry</p>
+            </div>
+            <div className="bg-red-50 rounded-lg px-3 py-2.5">
+              <p className="text-[10px] text-red-500 font-semibold uppercase tracking-widest mb-1">Risk @ Stop</p>
+              <p className="text-lg font-bold text-red-600 tabular-nums">
+                −₹{(riskAtStop / 1000).toFixed(1)}k
+              </p>
+              <p className="text-[10px] text-red-400 mt-0.5">if all hit stop</p>
+            </div>
+          </div>
+
+          {/* Per-position rows */}
+          <div className="space-y-1">
+            {open.map((t) => {
+              const risk = Math.abs(t.avgEntry - t.stopLoss) * t.openShares;
+              const riskPct = t.avgEntry > 0 ? (Math.abs(t.avgEntry - t.stopLoss) / t.avgEntry) * 100 : 0;
+              return (
+                <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors text-[11px]">
+                  <span className="font-bold text-gray-900 w-14 truncate">{t.ticker}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${t.direction === "Long" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+                    {t.direction}
+                  </span>
+                  <span className="text-gray-500">{t.openShares.toLocaleString("en-IN")} sh</span>
+                  <span className="text-gray-400">@ ₹{t.avgEntry.toFixed(1)}</span>
+                  {t.realizedPnl !== 0 && (
+                    <span className={`font-semibold ${t.realizedPnl > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      {t.realizedPnl > 0 ? "+" : "−"}₹{Math.abs(t.realizedPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })} realized
+                    </span>
+                  )}
+                  <span className="ml-auto text-red-400 font-medium">
+                    −₹{risk.toLocaleString("en-IN", { maximumFractionDigits: 0 })} ({riskPct.toFixed(1)}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {openRealizedPnl !== 0 && (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+              <span className="text-gray-400">Partial exits on open trades:</span>
+              <span className={`font-semibold ${openRealizedPnl > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                {openRealizedPnl > 0 ? "+" : "−"}₹{Math.abs(openRealizedPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
