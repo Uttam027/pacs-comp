@@ -114,6 +114,7 @@ export default function PACSAnalytics() {
   const [sortDaysAgo, setSortDaysAgo] = useState(null); // null = no sort, 'asc' = ascending, 'desc' = descending
   const [trendDistrict, setTrendDistrict] = useState('all'); // District filter for trend analysis
   const [trendCategories, setTrendCategories] = useState(['all']); // Category filter for trend analysis
+  const [activeTab, setActiveTab] = useState("Dashboard");
 
   useEffect(() => {
     // Default to yesterday's date (since reports are for yesterday's day-end)
@@ -789,32 +790,6 @@ export default function PACSAnalytics() {
     return filtered;
   };
 
-  if (initialLoading) {
-    console.log('Rendering loading screen...');
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid #e5e7eb',
-            borderTop: '4px solid #111',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }}></div>
-          <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading PACS Analytics...</p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
   // Generate trend data from all snapshots
   const getTrendData = () => {
     if (!allSnapshots || allSnapshots.length === 0) return [];
@@ -1190,8 +1165,6 @@ export default function PACSAnalytics() {
       alert(`Failed to generate PDF report.\n\nError: ${error.message}\n\nPlease check the browser console for details.`);
     }
   };
-
-  const [activeTab, setActiveTab] = useState("Dashboard");
 
   return (
     <div className="flex min-h-screen bg-gray-50">
