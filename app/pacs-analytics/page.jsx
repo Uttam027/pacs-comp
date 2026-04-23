@@ -8,8 +8,85 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  LayoutDashboard, BarChart3, Upload, Info, TrendingUp,
+  ChevronLeft, ChevronRight, Moon, Sun,
+  Search, FileText,
+} from 'lucide-react';
+
+const TABS = ["Dashboard", "Upload", "Trends"];
+
+function PACSSidebar({ activeTab, onTabChange }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [dark, setDark] = useState(false);
+
+  const navItems = [
+    { id: "Dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "Upload", label: "Upload CSV", icon: Upload },
+    { id: "Trends", label: "Trend Analysis", icon: BarChart3 },
+    { id: "info", label: "Definitions", icon: Info },
+  ];
+
+  return (
+    <aside
+      className={`flex flex-col border-r border-gray-200 bg-white transition-all duration-200 ${collapsed ? "w-14" : "w-52"}`}
+      style={{ minHeight: "100vh" }}
+    >
+      <div className={`flex items-center gap-2 px-4 py-4 border-b border-gray-100 ${collapsed ? "justify-center px-0" : ""}`}>
+        <div className="shrink-0 w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center">
+          <TrendingUp className="w-4 h-4 text-white" />
+        </div>
+        {!collapsed && (
+          <div className="overflow-hidden">
+            <p className="text-sm font-bold text-gray-900 leading-none tracking-tight">PACS</p>
+            <p className="text-[9px] text-gray-400 tracking-widest uppercase mt-0.5">Analytics</p>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex-1 py-3 space-y-0.5 px-2">
+        {navItems.map(({ id, label, icon: Icon }) => {
+          const active = activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              className={`w-full flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors ${
+                active
+                  ? "bg-gray-100 text-gray-900 font-semibold"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+              } ${collapsed ? "justify-center" : ""}`}
+              title={collapsed ? label : undefined}
+            >
+              <Icon className={`shrink-0 ${active ? "w-4 h-4 text-gray-900" : "w-4 h-4 text-gray-400"}`} />
+              {!collapsed && <span className="text-[13px]">{label}</span>}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-gray-100 px-2 py-3 space-y-1">
+        <button
+          onClick={() => setDark(!dark)}
+          className={`w-full flex items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors ${collapsed ? "justify-center" : ""}`}
+          title={collapsed ? (dark ? "Light mode" : "Dark mode") : undefined}
+        >
+          {dark ? <Sun className="w-4 h-4 text-gray-400" /> : <Moon className="w-4 h-4 text-gray-400" />}
+          {!collapsed && <span className="text-[13px]">{dark ? "Light mode" : "Dark mode"}</span>}
+        </button>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={`w-full flex items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-400 hover:bg-gray-50 transition-colors ${collapsed ? "justify-center" : ""}`}
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          {!collapsed && <span className="text-[13px]">Collapse</span>}
+        </button>
+      </div>
+    </aside>
+  );
+}
 
 export default function PACSAnalytics() {
   // Initialize with yesterday's date
@@ -1114,1384 +1191,704 @@ export default function PACSAnalytics() {
     }
   };
 
-  console.log('Rendering main page, analysis:', analysis);
+  const [activeTab, setActiveTab] = useState("Dashboard");
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="flex min-h-screen bg-gray-50">
+      <PACSSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* Back to Dashboard Link */}
-        <Link
-          href="/"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            marginBottom: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            transition: 'all 0.2s',
-            cursor: 'pointer'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-            e.currentTarget.style.borderColor = '#d1d5db';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#e5e7eb';
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>←</span>
-          <span>Back to Dashboard</span>
-        </Link>
-
-        {/* Header */}
-        <div style={{ marginBottom: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1', minWidth: '280px' }}>
-              <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: '#111' }}>
-                PACS Analytics (T-7 Classification)
-              </h1>
-              <p style={{ color: '#6b7280', fontSize: '15px', marginBottom: '0' }}>
-                Track Dynamic Day End activity and PACS status changes
-              </p>
-            </div>
-
-            {/* Snapshot Date Box */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Sticky top bar */}
+        <header className="bg-white border-b border-gray-200 px-6 py-0 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex items-center gap-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab
+                    ? "border-gray-900 text-gray-900"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
             {analysis && analysis.snapshotDate && (
-              <div style={{
-                padding: '16px 20px',
-                backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '10px',
-                minWidth: '220px'
-              }}>
-                <p style={{ fontSize: '12px', color: '#166534', marginBottom: '4px', fontWeight: '500' }}>
-                  📅 Snapshot Date
-                </p>
-                <p style={{ fontSize: '16px', fontWeight: '600', color: '#15803d', margin: '0' }}>
-                  {new Date(analysis.snapshotDate).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </p>
+              <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 text-xs gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                {new Date(analysis.snapshotDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </Badge>
+            )}
+            <Link href="/" className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 rounded-md px-3 py-1.5 hover:bg-gray-50 transition-colors">
+              ← Home
+            </Link>
+          </div>
+        </header>
+
+        {/* Page title row */}
+        <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
+          <h1 className="text-lg font-bold text-gray-900">
+            {activeTab === "Dashboard" ? "PACS Analytics" : activeTab === "Upload" ? "Upload CSV" : "Trend Analysis"}
+          </h1>
+          <p className="text-xs text-gray-400">
+            T-7 Classification · Dynamic Day End
+          </p>
+        </div>
+
+        {/* Content */}
+        <main className="flex-1 px-6 py-5">
+          {initialLoading ? (
+            <div className="flex items-center justify-center py-32">
+              <p className="text-sm text-gray-300 tracking-widest uppercase animate-pulse">Loading…</p>
+            </div>
+          ) : (
+            <>
+              {activeTab === "Dashboard" && (
+                <DashboardTab
+                  analysis={analysis}
+                  filterCategory={filterCategory}
+                  setFilterCategory={setFilterCategory}
+                  filterDistrict={filterDistrict}
+                  setFilterDistrict={setFilterDistrict}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  sortDaysAgo={sortDaysAgo}
+                  setSortDaysAgo={setSortDaysAgo}
+                  filteredData={filteredData}
+                  getDistrictStats={getDistrictStats}
+                  setSelectedPACS={setSelectedPACS}
+                  setIsTimelineDialogOpen={setIsTimelineDialogOpen}
+                  generateDroppedPACSReport={generateDroppedPACSReport}
+                />
+              )}
+              {activeTab === "Upload" && (
+                <UploadTab
+                  selectedDate={selectedDate}
+                  setSelectedDate={setSelectedDate}
+                  todayFile={todayFile}
+                  setTodayFile={setTodayFile}
+                  loading={loading}
+                  error={error}
+                  setError={setError}
+                  analysis={analysis}
+                  setAnalysis={setAnalysis}
+                  handleAnalyze={handleAnalyze}
+                  handleFileChange={handleFileChange}
+                  handleBulkUpload={handleBulkUpload}
+                  allSnapshots={allSnapshots}
+                />
+              )}
+              {activeTab === "Trends" && (
+                <TrendsTab
+                  allSnapshots={allSnapshots}
+                  analysis={analysis}
+                  getTrendData={getTrendData}
+                  trendDistrict={trendDistrict}
+                  setTrendDistrict={setTrendDistrict}
+                  trendCategories={trendCategories}
+                  setTrendCategories={setTrendCategories}
+                />
+              )}
+              {activeTab === "info" && (
+                <InfoTab allSnapshots={allSnapshots} />
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      {/* PACS Timeline Dialog */}
+      <Dialog open={isTimelineDialogOpen} onOpenChange={setIsTimelineDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">
+              {selectedPACS?.name || 'PACS Timeline'}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPACS?.district && `District: ${selectedPACS.district} · `}
+              Activity timeline for the last {allSnapshots.length} days
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPACS && (() => {
+            const timeline = buildPACSTimeline(selectedPACS.id);
+            const stats = getTimelineStats(timeline);
+
+            if (!stats) {
+              return (
+                <div className="text-center py-12 text-gray-500">
+                  No timeline data available for this PACS
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-xs text-gray-500 mb-1">Current Status</div>
+                    <div className="text-sm font-semibold" style={{ color: getCategoryColor(stats.currentStatus.category) }}>
+                      {stats.currentStatus.categoryLabel}
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="text-xs text-gray-500 mb-1">Active Days</div>
+                    <div className="text-lg font-semibold text-blue-600">{stats.activeDays}/{stats.totalDays}</div>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-xs text-gray-500 mb-1">Current Streak</div>
+                    <div className="text-lg font-semibold text-green-600">{stats.currentStreak} days</div>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="text-xs text-gray-500 mb-1">Longest Streak</div>
+                    <div className="text-lg font-semibold text-purple-600">{stats.longestStreak} days</div>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-4">
+                    <div className="text-xs text-gray-500 mb-1">Status Changes</div>
+                    <div className="text-lg font-semibold text-amber-600">{stats.statusChanges}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Activity Timeline</h3>
+                  <div className="flex gap-1 overflow-x-auto pb-2">
+                    {timeline.map((day, index) => (
+                      <div
+                        key={index}
+                        className="relative group shrink-0"
+                        style={{ width: '32px', height: '80px', backgroundColor: getCategoryColor(day.category), borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                          <div className="font-semibold">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          <div>{day.categoryLabel}</div>
+                          {day.lastDayEnd && <div className="text-gray-300">Last: {day.lastDayEnd}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Status Legend</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                    {[
+                      { cat: 'dynamic-t1', label: 'Dynamic (T-1)' },
+                      { cat: 'dynamic-t7', label: 'Dynamic (T-7)' },
+                      { cat: 'new', label: 'New PACS' },
+                      { cat: 'consistent', label: 'Consistent' },
+                      { cat: 'dropped', label: 'Dropped' },
+                      { cat: 'inactive', label: 'Inactive' },
+                    ].map(({ cat, label }) => (
+                      <div key={cat} className="flex items-center gap-2">
+                        <div style={{ width: '16px', height: '16px', backgroundColor: getCategoryColor(cat), borderRadius: '3px' }} />
+                        <span>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Recent Activity</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {timeline.slice().reverse().slice(0, 10).map((day, index) => (
+                      <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg text-sm">
+                        <div className="flex items-center gap-3">
+                          <div style={{ width: '12px', height: '12px', backgroundColor: getCategoryColor(day.category), borderRadius: '2px' }} />
+                          <span className="text-gray-600">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-medium" style={{ color: getCategoryColor(day.category) }}>{day.categoryLabel}</span>
+                          {day.lastDayEnd && <span className="text-xs text-gray-500">Last: {day.lastDayEnd}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Dashboard Tab ───────────────────────────────────────────────────────────
+
+function DashboardTab({
+  analysis, filterCategory, setFilterCategory, filterDistrict, setFilterDistrict,
+  searchTerm, setSearchTerm, sortDaysAgo, setSortDaysAgo, filteredData,
+  getDistrictStats, setSelectedPACS, setIsTimelineDialogOpen, generateDroppedPACSReport
+}) {
+  const getCategoryBadgeStyle = (category) => {
+    const map = {
+      'dynamic-t1': 'bg-cyan-100 text-cyan-700',
+      'dynamic-t7': 'bg-sky-100 text-sky-700',
+      'new': 'bg-emerald-100 text-emerald-700',
+      'consistent': 'bg-amber-100 text-amber-700',
+      'dropped': 'bg-red-100 text-red-700',
+      'inactive': 'bg-gray-100 text-gray-500',
+    };
+    return map[category] || 'bg-gray-100 text-gray-500';
+  };
+
+  if (!analysis || !analysis.stats || !analysis.results) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4">
+        <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+          <Upload className="w-5 h-5 text-gray-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-700">No data uploaded yet</p>
+          <p className="text-xs text-gray-400 mt-1">Go to the Upload tab to add your first CSV report</p>
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { key: 'dynamic-t7', label: 'Dynamic (T-7)', value: analysis.stats.dynamicT7 || 0, sub: 'Within 7 days', color: 'text-sky-600', border: 'border-sky-200', bg: 'bg-sky-50' },
+    { key: 'dynamic-t1', label: 'Dynamic (T-1)', value: analysis.stats.dynamicT1 || 0, sub: 'Same day', color: 'text-cyan-600', border: 'border-cyan-200', bg: 'bg-cyan-50' },
+    { key: 'new', label: 'New PACS', value: analysis.stats.newPACS || 0, sub: 'Started today', color: 'text-emerald-600', border: 'border-emerald-200', bg: 'bg-emerald-50' },
+    { key: 'consistent', label: 'Consistent', value: analysis.stats.consistentPACS || 0, sub: 'Ongoing', color: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' },
+    { key: 'dropped', label: 'Dropped', value: analysis.stats.droppedPACS || 0, sub: 'Lost', color: 'text-red-600', border: 'border-red-200', bg: 'bg-red-50', reportBtn: true },
+  ];
+
+  const districtStats = getDistrictStats();
+  const data = filteredData();
+
+  return (
+    <div className="space-y-5">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {statCards.map((card) => (
+          <div
+            key={card.key}
+            onClick={() => setFilterCategory(filterCategory === card.key ? 'all' : card.key)}
+            className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all hover:shadow-sm ${
+              filterCategory === card.key ? card.border + ' shadow-sm' : 'border-gray-100'
+            }`}
+          >
+            <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${card.color}`}>{card.label}</p>
+            <p className={`text-3xl font-bold ${card.color} mb-1`}>{card.value}</p>
+            <p className="text-xs text-gray-400">{card.sub}</p>
+            {card.reportBtn && (
+              <button
+                onClick={(e) => { e.stopPropagation(); generateDroppedPACSReport(); }}
+                disabled={!card.value}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold bg-red-600 hover:bg-red-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-lg py-1.5 transition-colors"
+              >
+                <FileText className="w-3 h-3" />
+                PDF Report
+              </button>
             )}
           </div>
+        ))}
+      </div>
 
-          {/* Collapsible Info Section */}
-          <div style={{
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            marginBottom: '12px',
-            overflow: 'hidden'
-          }}>
-            {/* Accordion Header */}
+      {/* District Stats (when filtered) */}
+      {districtStats && (
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+          <p className="text-sm font-semibold text-gray-900 mb-4">
+            {filterDistrict} District
+            <span className="text-xs font-normal text-gray-400 ml-2">({districtStats.total} total PACS)</span>
+          </p>
+          <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { label: 'T-7', value: districtStats.dynamicT7, cls: 'bg-sky-50 text-sky-700' },
+              { label: 'T-1', value: districtStats.dynamicT1, cls: 'bg-cyan-50 text-cyan-700' },
+              { label: 'New', value: districtStats.newPACS, cls: 'bg-emerald-50 text-emerald-700' },
+              { label: 'Consistent', value: districtStats.consistentPACS, cls: 'bg-amber-50 text-amber-700' },
+              { label: 'Dropped', value: districtStats.droppedPACS, cls: 'bg-red-50 text-red-700' },
+              { label: 'Inactive', value: districtStats.inactive, cls: 'bg-gray-50 text-gray-500' },
+            ].map(({ label, value, cls }) => (
+              <div key={label} className={`rounded-lg p-3 ${cls}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1 opacity-70">{label}</p>
+                <p className="text-xl font-bold">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filters + Table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-gray-900 mr-2">Results</p>
+
+          {/* Category pills */}
+          {[
+            { val: 'all', label: 'All' },
+            { val: 'dynamic-t7', label: 'T-7' },
+            { val: 'dynamic-t1', label: 'T-1' },
+            { val: 'new', label: 'New' },
+            { val: 'consistent', label: 'Consistent' },
+            { val: 'dropped', label: 'Dropped' },
+            { val: 'inactive', label: 'Inactive' },
+          ].map(({ val, label }) => (
             <button
-              onClick={() => setIsInfoExpanded(!isInfoExpanded)}
-              style={{
-                width: '100%',
-                padding: '16px 20px',
-                backgroundColor: isInfoExpanded ? '#f9fafb' : 'white',
-                border: 'none',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              }}
+              key={val}
+              onClick={() => setFilterCategory(val)}
+              className={`text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-md border transition-colors ${
+                filterCategory === val
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "text-gray-500 border-gray-200 hover:border-gray-400"
+              }`}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '18px' }}>ℹ️</span>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'left' }}>
-                    Pattern Definitions & Upload History
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
-                    {isInfoExpanded ? 'Click to hide' : (allSnapshots.length > 0 ? `Click to view category definitions and ${allSnapshots.length} upload${allSnapshots.length !== 1 ? 's' : ''}` : 'Click to view category definitions')}
-                  </div>
-                </div>
-              </div>
-              <span style={{ fontSize: '20px', color: '#6b7280', transition: 'transform 0.2s', transform: isInfoExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                ▼
-              </span>
+              {label}
             </button>
+          ))}
 
-            {/* Accordion Content */}
-            {isInfoExpanded && (
-              <div style={{ padding: '0 20px 20px 20px', borderTop: '1px solid #e5e7eb' }}>
-                {/* Category Definitions */}
-                <div style={{ paddingTop: '20px' }}>
-                  <div style={{
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    color: '#111',
-                    marginBottom: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span>📊</span>
-                    <span>Category Definitions</span>
-                  </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '16px',
-                    fontSize: '12px',
-                    lineHeight: '1.6'
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#0ea5e9', marginBottom: '4px' }}>
-                        💙 Dynamic Day End (T-7)
-                      </div>
-                      <div style={{ color: '#6b7280' }}>
-                        Last day-end within last 7 days (including snapshot date)
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#06b6d4', marginBottom: '4px' }}>
-                        🔵 Dynamic Day End (T-1)
-                      </div>
-                      <div style={{ color: '#6b7280' }}>
-                        Last day-end equals snapshot date (most current)
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#10b981', marginBottom: '4px' }}>
-                        🟢 New PACS
-                      </div>
-                      <div style={{ color: '#6b7280' }}>
-                        Not in T-7 yesterday, but performed day-end today
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#f59e0b', marginBottom: '4px' }}>
-                        🟡 Consistent PACS
-                      </div>
-                      <div style={{ color: '#6b7280' }}>
-                        In T-7 list on both current and previous day
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#ef4444', marginBottom: '4px' }}>
-                        🔴 Dropped PACS
-                      </div>
-                      <div style={{ color: '#6b7280' }}>
-                        Were in T-7 yesterday, but not in current list
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#9ca3af', marginBottom: '4px' }}>
-                        ⚪ Inactive ({'>'}T-7)
-                      </div>
-                      <div style={{ color: '#6b7280' }}>
-                        Last day-end more than 7 days old
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div className="w-px bg-gray-200 mx-1" />
 
-                {/* Database Info */}
-                <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px',
-                    display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#15803d', border: '1px solid #bbf7d0' }}>
-                    <span>☁️</span>
-                    <span style={{ fontWeight: '500' }}>Using Cloud Database (Redis) - Syncs Across Devices</span>
-                  </div>
+          {/* District select */}
+          <select
+            value={filterDistrict}
+            onChange={(e) => setFilterDistrict(e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 text-gray-600 bg-white hover:border-gray-400 transition-colors"
+          >
+            <option value="all">All Districts</option>
+            {(analysis.districts || []).map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
 
-                  {allSnapshots.length > 0 && (
-                    <div style={{ padding: '8px 12px', backgroundColor: '#ede9fe', borderRadius: '6px',
-                      display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#6b21a8', border: '1px solid #c4b5fd' }}>
-                      <span>📅</span>
-                      <span style={{ fontWeight: '500' }}>{allSnapshots.length} day{allSnapshots.length !== 1 ? 's' : ''} of data uploaded</span>
-                    </div>
-                  )}
-                </div>
+          {/* Search */}
+          <div className="flex items-center gap-1.5 border border-gray-200 rounded-md px-2.5 py-1 ml-auto">
+            <Search className="w-3 h-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search PACS..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="text-xs outline-none w-36 text-gray-700 placeholder-gray-400"
+            />
+          </div>
 
-                {/* Upload History */}
-                {allSnapshots.length > 0 && (
-                  <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
-                    <h3 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '12px', color: '#111', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>📅</span>
-                      <span>Upload History ({allSnapshots.length} days)</span>
-                    </h3>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {allSnapshots.map((snapshot) => (
-                        <div
-                          key={snapshot.date}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#f3f4f6',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            color: '#374151',
-                            border: '1px solid #d1d5db',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}
-                        >
-                          <span>
-                            {new Date(snapshot.date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+          <span className="text-[10px] text-gray-400 self-center">{data.length} PACS</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-50">
+              <tr>
+                {['PACS Name', 'District', 'Category', 'Last Day End', null].map((col, i) => (
+                  col === null ? (
+                    <th
+                      key="days"
+                      onClick={() => setSortDaysAgo(sortDaysAgo === null ? 'asc' : sortDaysAgo === 'asc' ? 'desc' : null)}
+                      className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                    >
+                      <span className="flex items-center gap-1">
+                        Days Ago
+                        <span className="text-[10px]">{sortDaysAgo === 'asc' ? '↑' : sortDaysAgo === 'desc' ? '↓' : '⇅'}</span>
+                      </span>
+                    </th>
+                  ) : (
+                    <th key={col} className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{col}</th>
+                  )
+                ))}
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.slice(0, 200).map((p, i) => (
+                <tr key={i} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => { setSelectedPACS(p); setIsTimelineDialogOpen(true); }}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
+                    >
+                      {p.name}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{p.district}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${getCategoryBadgeStyle(p.category)}`}>
+                      {p.categoryLabel}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{p.lastDayEndDate || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    {p.daysSinceLastDayEnd === 0 ? 'Today' : p.daysSinceLastDayEnd !== null ? `${p.daysSinceLastDayEnd}d` : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-400 max-w-xs">
+                    {p.category === 'new' ? 'First appearance in T-7' :
+                     p.category === 'consistent' ? 'Continuing from previous day' :
+                     p.category === 'dropped' ? 'Previously in T-7, now inactive' :
+                     p.category === 'inactive' ? `Last activity >7 days ago` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {data.length === 0 && (
+          <div className="py-16 text-center">
+            <p className="text-sm text-gray-400">No PACS found · Try adjusting your filters</p>
+          </div>
+        )}
+        {data.length > 200 && (
+          <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-400 text-center">
+            Showing first 200 of {data.length.toLocaleString()} PACS
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Upload Tab ───────────────────────────────────────────────────────────────
+
+function UploadTab({
+  selectedDate, setSelectedDate, todayFile, setTodayFile, loading, error, setError,
+  analysis, setAnalysis, handleAnalyze, handleFileChange, handleBulkUpload, allSnapshots
+}) {
+  return (
+    <div className="space-y-5 max-w-2xl">
+      {!analysis && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 text-sm text-blue-700">
+          <p className="font-semibold mb-1">Welcome to PACS Analytics</p>
+          <p className="text-xs text-blue-600">Upload your first CSV report to start tracking Dynamic Day End activity.</p>
+        </div>
+      )}
+
+      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-sm font-semibold text-gray-900">Upload Options</p>
+          <div className="flex gap-2">
+            <label className="text-xs cursor-pointer border border-blue-200 bg-blue-50 text-blue-700 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors font-medium">
+              Bulk Upload
+              <input type="file" accept=".csv" multiple onChange={handleBulkUpload} disabled={loading} className="hidden" />
+            </label>
+            {analysis && (
+              <button
+                onClick={() => { setAnalysis(null); setTodayFile(null); }}
+                className="text-xs border border-red-200 bg-red-50 text-red-700 rounded-md px-3 py-1.5 hover:bg-red-100 transition-colors font-medium"
+              >
+                Clear Data
+              </button>
             )}
           </div>
         </div>
 
-        {/* Info message if no data */}
-        {!analysis && (
-          <div style={{ backgroundColor: '#e3f2fd', border: '1px solid #2196f3', padding: '16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-            <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1565c0' }}>
-              ℹ️ Welcome to PACS Analytics (T-7 Classification)
-            </div>
-            <div style={{ color: '#1976d2' }}>
-              Upload your first CSV report below to start tracking Dynamic Day End activity and PACS status changes.
-            </div>
-          </div>
-        )}
-
-        {/* Upload Section - Collapsible */}
-        <div style={{
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '12px',
-          marginBottom: '24px',
-          overflow: 'hidden'
-        }}>
-          {/* Accordion Header */}
-          <button
-            onClick={() => setIsUploadExpanded(!isUploadExpanded)}
-            style={{
-              width: '100%',
-              padding: '16px 20px',
-              backgroundColor: isUploadExpanded ? '#f9fafb' : 'white',
-              border: 'none',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '18px' }}>📤</span>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'left' }}>
-                  Upload CSV Report
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
-                  {isUploadExpanded ? 'Click to hide upload section' : 'Click to upload or analyze CSV reports'}
-                </div>
-              </div>
-            </div>
-            <span style={{ fontSize: '20px', color: '#6b7280', transition: 'transform 0.2s', transform: isUploadExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-              ▼
-            </span>
-          </button>
-
-          {/* Accordion Content */}
-          {isUploadExpanded && (
-            <div style={{ padding: '32px', borderTop: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: '700' }}>Upload Options</h2>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <label style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#dbeafe',
-                    color: '#1e40af',
-                    border: '1px solid #93c5fd',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    display: 'inline-block'
-                  }}>
-                    📦 Bulk Upload (Multiple Files)
-                    <input
-                      type="file"
-                      accept=".csv"
-                      multiple
-                      onChange={handleBulkUpload}
-                      disabled={loading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                  {analysis && (
-                    <button
-                      onClick={() => {
-                        setAnalysis(null);
-                        setTodayFile(null);
-                        const yesterday = new Date();
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        setSelectedDate(yesterday.toISOString().split('T')[0]);
-                      }}
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#fee2e2',
-                        color: '#991b1b',
-                        border: '1px solid #fecaca',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🗑️ Clear & Upload New
-                    </button>
-                  )}
-                </div>
-              </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                Snapshot Date (Report Date)
-              </label>
-              <input
-                type="date"
-                value={selectedDate || ''}
-                onChange={async (e) => {
-                  const newDate = e?.target?.value;
-
-                  if (!newDate) {
-                    console.log('⚠️ No date selected');
-                    return;
-                  }
-
-                  console.log('📅 Date changed to:', newDate);
-                  setSelectedDate(newDate);
-                  setError(null);
-
-                  // Try to load snapshot for this date
-                  try {
-                    const response = await fetch(`/api/pacs-analytics/daily?date=${newDate}`);
-                    const result = await response.json();
-
-                    if (result.data && result.data.results) {
-                      console.log('✅ Loaded snapshot for', newDate);
-                      setAnalysis(result.data);
-                    } else {
-                      console.log('ℹ️ No snapshot found for', newDate);
-                      setAnalysis(null);
-                    }
-                  } catch (err) {
-                    console.error('Error loading snapshot for date:', err);
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Snapshot Date</label>
+            <input
+              type="date"
+              value={selectedDate || ''}
+              onChange={async (e) => {
+                const newDate = e?.target?.value;
+                if (!newDate) return;
+                setSelectedDate(newDate);
+                setError(null);
+                try {
+                  const response = await fetch(`/api/pacs-analytics/daily?date=${newDate}`);
+                  const result = await response.json();
+                  if (result.data && result.data.results) {
+                    setAnalysis(result.data);
+                  } else {
                     setAnalysis(null);
                   }
-                }}
-                max={new Date().toISOString().split('T')[0]}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-              />
-              <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
-                Date of the CoopsIndia report (data captured till this date)
-              </p>
-            </div>
+                } catch {
+                  setAnalysis(null);
+                }
+              }}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-gray-400 transition-colors"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">Date of the CoopsIndia report</p>
+          </div>
 
-            <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: '12px', padding: '32px',
-              textAlign: 'center', cursor: 'pointer', marginBottom: '20px', backgroundColor: '#fafafa' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>📄</div>
-              <div style={{ fontSize: '14px', fontWeight: '500', color: '#111', marginBottom: '6px' }}>
-                {todayFile ? todayFile.name : 'Click to select CSV file'}
-              </div>
-              <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-                {todayFile ? 'File ready to analyze' : 'Or drag and drop here'}
-              </div>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-              />
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">CSV File</label>
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl py-10 cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-all">
+              <div className="text-3xl mb-3">📄</div>
+              <p className="text-sm font-medium text-gray-700">{todayFile ? todayFile.name : 'Click to select CSV file'}</p>
+              <p className="text-xs text-gray-400 mt-1">{todayFile ? 'File ready to analyze' : 'or drag and drop here'}</p>
+              <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
             </label>
+          </div>
 
-            <button
-              onClick={handleAnalyze}
-              disabled={!todayFile || loading}
-              style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: todayFile && !loading ? '#111' : '#e5e7eb',
-                color: todayFile && !loading ? 'white' : '#9ca3af',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: todayFile && !loading ? 'pointer' : 'not-allowed'
-              }}>
-              {loading ? 'Analyzing...' : 'Analyze & Show Results'}
-            </button>
+          <button
+            onClick={handleAnalyze}
+            disabled={!todayFile || loading}
+            className="w-full py-3 rounded-xl text-sm font-semibold transition-colors bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Analyzing…' : 'Analyze & Save'}
+          </button>
 
-            {error && (
-              <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca',
-                borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
-                ⚠️ {error}
-              </div>
-            )}
+          {error && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              ⚠ {error}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Trend Chart Section - Collapsible */}
-        {allSnapshots.length >= 2 && (
-          <div style={{
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            marginBottom: '24px',
-            overflow: 'hidden'
-          }}>
-            {/* Accordion Header */}
-            <button
-              onClick={() => setIsTrendExpanded(!isTrendExpanded)}
-              style={{
-                width: '100%',
-                padding: '16px 20px',
-                backgroundColor: isTrendExpanded ? '#f9fafb' : 'white',
-                border: 'none',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '18px' }}>📈</span>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'left' }}>
-                    Trend Analysis
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', textAlign: 'left' }}>
-                    {isTrendExpanded ? 'Click to hide trend charts' : `View ${allSnapshots.length} days of historical trends`}
-                  </div>
-                </div>
-              </div>
-              <span style={{ fontSize: '20px', color: '#6b7280', transition: 'transform 0.2s', transform: isTrendExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                ▼
+      {allSnapshots.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+          <p className="text-sm font-semibold text-gray-900 mb-3">Upload History
+            <span className="text-xs font-normal text-gray-400 ml-2">({allSnapshots.length} days)</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {allSnapshots.map((s) => (
+              <span key={s.date} className="text-xs px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-md text-gray-600">
+                {new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
-            </button>
-
-            {/* Accordion Content */}
-            {isTrendExpanded && (
-              <div style={{ padding: '32px', borderTop: '1px solid #e5e7eb' }}>
-                <div style={{ marginBottom: '24px' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111', marginBottom: '8px' }}>
-                    PACS Activity Trends (Last {getTrendData().length} Days)
-                  </h3>
-                  <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
-                    Track how PACS classifications change over time to identify patterns and trends
-                  </p>
-
-                  {/* Filters */}
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    {/* District Filter */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
-                        District
-                      </label>
-                      <select
-                        value={trendDistrict}
-                        onChange={(e) => setTrendDistrict(e.target.value)}
-                        style={{
-                          padding: '8px 32px 8px 12px',
-                          fontSize: '13px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          color: '#111',
-                          cursor: 'pointer',
-                          minWidth: '180px'
-                        }}
-                      >
-                        <option value="all">All Districts</option>
-                        {analysis && analysis.results && (() => {
-                          const districts = [...new Set(analysis.results.map(p => p.district))].sort();
-                          return districts.map(d => <option key={d} value={d}>{d}</option>);
-                        })()}
-                      </select>
-                    </div>
-
-                    {/* Category Filter */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
-                        Show Categories
-                      </label>
-                      <select
-                        multiple
-                        value={trendCategories}
-                        onChange={(e) => {
-                          const selected = Array.from(e.target.selectedOptions, option => option.value);
-                          setTrendCategories(selected.length > 0 ? selected : ['all']);
-                        }}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: '13px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          color: '#111',
-                          cursor: 'pointer',
-                          minWidth: '180px',
-                          height: '100px'
-                        }}
-                      >
-                        <option value="all">All Categories</option>
-                        <option value="T-7">T-7 (Dynamic Day-End)</option>
-                        <option value="T-1">T-1 (Today's Day-End)</option>
-                        <option value="New">New PACS</option>
-                        <option value="Consistent">Consistent PACS</option>
-                        <option value="Dropped">Dropped PACS</option>
-                        <option value="Inactive">Inactive PACS</option>
-                      </select>
-                      <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-                        Hold Ctrl/Cmd to select multiple
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Chart */}
-                <div style={{ width: '100%', height: '400px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={getTrendData()}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis
-                        dataKey="date"
-                        style={{ fontSize: '12px' }}
-                        stroke="#6b7280"
-                      />
-                      <YAxis
-                        style={{ fontSize: '12px' }}
-                        stroke="#6b7280"
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }}
-                      />
-                      <Legend
-                        wrapperStyle={{ fontSize: '12px' }}
-                      />
-                      {(trendCategories.includes('all') || trendCategories.includes('T-7')) && (
-                        <Line
-                          type="monotone"
-                          dataKey="T-7"
-                          stroke="#0ea5e9"
-                          strokeWidth={2}
-                          dot={{ fill: '#0ea5e9', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      )}
-                      {(trendCategories.includes('all') || trendCategories.includes('T-1')) && (
-                        <Line
-                          type="monotone"
-                          dataKey="T-1"
-                          stroke="#06b6d4"
-                          strokeWidth={2}
-                          dot={{ fill: '#06b6d4', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      )}
-                      {(trendCategories.includes('all') || trendCategories.includes('New')) && (
-                        <Line
-                          type="monotone"
-                          dataKey="New"
-                          stroke="#10b981"
-                          strokeWidth={2}
-                          dot={{ fill: '#10b981', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      )}
-                      {(trendCategories.includes('all') || trendCategories.includes('Consistent')) && (
-                        <Line
-                          type="monotone"
-                          dataKey="Consistent"
-                          stroke="#f59e0b"
-                          strokeWidth={2}
-                          dot={{ fill: '#f59e0b', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      )}
-                      {(trendCategories.includes('all') || trendCategories.includes('Dropped')) && (
-                        <Line
-                          type="monotone"
-                          dataKey="Dropped"
-                          stroke="#ef4444"
-                          strokeWidth={2}
-                          dot={{ fill: '#ef4444', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      )}
-                      {(trendCategories.includes('all') || trendCategories.includes('Inactive')) && (
-                        <Line
-                          type="monotone"
-                          dataKey="Inactive"
-                          stroke="#9ca3af"
-                          strokeWidth={2}
-                          dot={{ fill: '#9ca3af', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Summary Stats */}
-                <div style={{
-                  marginTop: '24px',
-                  padding: '16px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '8px',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                  gap: '12px'
-                }}>
-                  {getTrendData().length > 0 && (() => {
-                    const latest = getTrendData()[getTrendData().length - 1];
-                    const earliest = getTrendData()[0];
-
-                    return (
-                      <>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>T-7 Change</div>
-                          <div style={{ fontSize: '18px', fontWeight: '600', color: latest['T-7'] >= earliest['T-7'] ? '#10b981' : '#ef4444' }}>
-                            {latest['T-7'] >= earliest['T-7'] ? '+' : ''}{latest['T-7'] - earliest['T-7']}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>T-1 Change</div>
-                          <div style={{ fontSize: '18px', fontWeight: '600', color: latest['T-1'] >= earliest['T-1'] ? '#10b981' : '#ef4444' }}>
-                            {latest['T-1'] >= earliest['T-1'] ? '+' : ''}{latest['T-1'] - earliest['T-1']}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>New PACS Trend</div>
-                          <div style={{ fontSize: '18px', fontWeight: '600', color: '#10b981' }}>
-                            {latest['New']} today
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Dropped Trend</div>
-                          <div style={{ fontSize: '18px', fontWeight: '600', color: '#ef4444' }}>
-                            {latest['Dropped']} today
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
+            ))}
           </div>
-        )}
+        </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Results */}
-        {analysis && analysis.stats && analysis.results && (
-          <div>
-            {/* Stats Cards */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '16px',
-              marginBottom: '32px'
-            }}>
-              <div
-                onClick={() => setFilterCategory('dynamic-t7')}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #bae6fd',
-                  borderRadius: '12px',
-                  cursor: 'pointer'
-                }}>
-                <div style={{ fontSize: '11px', color: '#0284c7', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>
-                  💙 DYNAMIC (T-7)
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#0ea5e9', marginBottom: '4px' }}>
-                  {analysis.stats?.dynamicT7 || 0}
-                </div>
-                <div style={{ fontSize: '12px', color: '#0369a1' }}>Within 7 days</div>
-              </div>
+// ── Trends Tab ───────────────────────────────────────────────────────────────
 
-              <div
-                onClick={() => setFilterCategory('dynamic-t1')}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #a5f3fc',
-                  borderRadius: '12px',
-                  cursor: 'pointer'
-                }}>
-                <div style={{ fontSize: '11px', color: '#0891b2', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>
-                  🔵 DYNAMIC (T-1)
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#06b6d4', marginBottom: '4px' }}>
-                  {analysis.stats?.dynamicT1 || 0}
-                </div>
-                <div style={{ fontSize: '12px', color: '#0e7490' }}>Same day</div>
-              </div>
+function TrendsTab({ allSnapshots, analysis, getTrendData, trendDistrict, setTrendDistrict, trendCategories, setTrendCategories }) {
+  if (allSnapshots.length < 2) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4">
+        <p className="text-sm text-gray-400">Upload at least 2 days of data to view trends</p>
+      </div>
+    );
+  }
 
-              <div
-                onClick={() => setFilterCategory('new')}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #bbf7d0',
-                  borderRadius: '12px',
-                  cursor: 'pointer'
-                }}>
-                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>
-                  🟢 NEW PACS
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#10b981', marginBottom: '4px' }}>
-                  {analysis.stats?.newPACS || 0}
-                </div>
-                <div style={{ fontSize: '12px', color: '#15803d' }}>Started today</div>
-              </div>
+  const trendData = getTrendData();
+  const latest = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+  const earliest = trendData.length > 0 ? trendData[0] : null;
 
-              <div
-                onClick={() => setFilterCategory('consistent')}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #fed7aa',
-                  borderRadius: '12px',
-                  cursor: 'pointer'
-                }}>
-                <div style={{ fontSize: '11px', color: '#d97706', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>
-                  🟡 CONSISTENT
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#f59e0b', marginBottom: '4px' }}>
-                  {analysis.stats?.consistentPACS || 0}
-                </div>
-                <div style={{ fontSize: '12px', color: '#c2410c' }}>Ongoing</div>
-              </div>
-
-              <div
-                onClick={() => setFilterCategory('dropped')}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #fecaca',
-                  borderRadius: '12px',
-                  cursor: 'pointer'
-                }}>
-                <div style={{ fontSize: '11px', color: '#dc2626', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>
-                  🔴 DROPPED
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#ef4444', marginBottom: '4px' }}>
-                  {analysis.stats?.droppedPACS || 0}
-                </div>
-                <div style={{ fontSize: '12px', color: '#b91c1c', marginBottom: '12px' }}>Lost</div>
-
-                {/* Generate Report Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent triggering the filter
-                    generateDroppedPACSReport();
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    backgroundColor: '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                  disabled={!analysis.stats?.droppedPACS || analysis.stats.droppedPACS === 0}
-                  title="Generate PDF report for dropped PACS"
-                >
-                  <span>📄</span>
-                  <span>Generate Report</span>
-                </button>
-              </div>
+  return (
+    <div className="space-y-5">
+      {/* Summary row */}
+      {latest && earliest && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'T-7 Change', val: latest['T-7'] - earliest['T-7'], color: latest['T-7'] >= earliest['T-7'] ? 'text-emerald-600' : 'text-red-500' },
+            { label: 'T-1 Change', val: latest['T-1'] - earliest['T-1'], color: latest['T-1'] >= earliest['T-1'] ? 'text-emerald-600' : 'text-red-500' },
+            { label: 'New Today', val: latest['New'], color: 'text-emerald-600' },
+            { label: 'Dropped Today', val: latest['Dropped'], color: 'text-red-500' },
+          ].map(({ label, val, color }) => (
+            <div key={label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs">
+              <p className="text-xs text-gray-400 mb-1">{label}</p>
+              <p className={`text-2xl font-bold ${color}`}>{val >= 0 ? `+${val}` : val}</p>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Filters */}
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                placeholder="Search PACS name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  flex: '1',
-                  minWidth: '200px',
-                  padding: '11px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-              />
-
+      {/* Chart */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">PACS Activity Trends</p>
+            <p className="text-xs text-gray-400 mt-0.5">Last {trendData.length} days of historical data</p>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1">District</label>
               <select
-                value={filterDistrict}
-                onChange={(e) => setFilterDistrict(e.target.value)}
-                style={{
-                  padding: '11px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minWidth: '160px',
-                  backgroundColor: 'white',
-                  color: '#111'
-                }}>
+                value={trendDistrict}
+                onChange={(e) => setTrendDistrict(e.target.value)}
+                className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 text-gray-600 bg-white"
+              >
                 <option value="all">All Districts</option>
-                {(analysis.districts || []).map(d => (
+                {analysis && analysis.results && [...new Set(analysis.results.map(p => p.district))].sort().map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
-
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                style={{
-                  padding: '11px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minWidth: '180px',
-                  backgroundColor: 'white',
-                  color: '#111'
-                }}>
-                <option value="all">All Categories</option>
-                <option value="dynamic-t1">🔵 Dynamic (T-1)</option>
-                <option value="dynamic-t7">💙 Dynamic (T-7)</option>
-                <option value="new">🟢 New PACS</option>
-                <option value="consistent">🟡 Consistent</option>
-                <option value="dropped">🔴 Dropped</option>
-                <option value="inactive">⚪ Inactive ({'>'}T-7)</option>
-              </select>
             </div>
-
-            {/* District Statistics */}
-            {getDistrictStats() && (
-              <div style={{
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                padding: '20px 24px',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#111',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span>📊</span>
-                  <span>{filterDistrict} District Statistics</span>
-                  <span style={{ fontSize: '12px', fontWeight: '400', color: '#6b7280' }}>
-                    ({getDistrictStats().total} total PACS)
-                  </span>
-                </div>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                  gap: '12px'
-                }}>
-                  {/* T-7 */}
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#dbeafe',
-                    borderRadius: '8px',
-                    border: '1px solid #93c5fd'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#1e40af', marginBottom: '4px' }}>
-                      💙 Dynamic (T-7)
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#1e40af' }}>
-                      {getDistrictStats().dynamicT7}
-                    </div>
-                  </div>
-
-                  {/* T-1 */}
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#cffafe',
-                    borderRadius: '8px',
-                    border: '1px solid #67e8f9'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#0e7490', marginBottom: '4px' }}>
-                      🔵 Dynamic (T-1)
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#0e7490' }}>
-                      {getDistrictStats().dynamicT1}
-                    </div>
-                  </div>
-
-                  {/* New PACS */}
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#d1fae5',
-                    borderRadius: '8px',
-                    border: '1px solid #6ee7b7'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#047857', marginBottom: '4px' }}>
-                      🟢 New PACS
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#047857' }}>
-                      {getDistrictStats().newPACS}
-                    </div>
-                  </div>
-
-                  {/* Consistent */}
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#fef3c7',
-                    borderRadius: '8px',
-                    border: '1px solid #fcd34d'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#92400e', marginBottom: '4px' }}>
-                      🟡 Consistent
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#92400e' }}>
-                      {getDistrictStats().consistentPACS}
-                    </div>
-                  </div>
-
-                  {/* Dropped */}
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#fee2e2',
-                    borderRadius: '8px',
-                    border: '1px solid #fca5a5'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#991b1b', marginBottom: '4px' }}>
-                      🔴 Dropped
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#991b1b' }}>
-                      {getDistrictStats().droppedPACS}
-                    </div>
-                  </div>
-
-                  {/* Inactive */}
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#f3f4f6',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#4b5563', marginBottom: '4px' }}>
-                      ⚪ Inactive ({'>'}T-7)
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '600', color: '#4b5563' }}>
-                      {getDistrictStats().inactive}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Table */}
-            <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
-                    <tr>
-                      <th style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: '#6b7280',
-                        textTransform: 'uppercase'
-                      }}>
-                        PACS NAME
-                      </th>
-                      <th style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: '#6b7280',
-                        textTransform: 'uppercase'
-                      }}>
-                        DISTRICT
-                      </th>
-                      <th style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: '#6b7280',
-                        textTransform: 'uppercase'
-                      }}>
-                        CATEGORY
-                      </th>
-                      <th style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: '#6b7280',
-                        textTransform: 'uppercase'
-                      }}>
-                        LAST DAY END
-                      </th>
-                      <th
-                        onClick={() => {
-                          if (sortDaysAgo === null) {
-                            setSortDaysAgo('asc');
-                          } else if (sortDaysAgo === 'asc') {
-                            setSortDaysAgo('desc');
-                          } else {
-                            setSortDaysAgo(null);
-                          }
-                        }}
-                        style={{
-                          padding: '14px 16px',
-                          textAlign: 'left',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#6b7280',
-                          textTransform: 'uppercase',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          DAYS AGO
-                          {sortDaysAgo === 'asc' && <span style={{ fontSize: '14px' }}>↑</span>}
-                          {sortDaysAgo === 'desc' && <span style={{ fontSize: '14px' }}>↓</span>}
-                          {sortDaysAgo === null && <span style={{ fontSize: '10px', opacity: 0.5 }}>⇅</span>}
-                        </div>
-                      </th>
-                      <th style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: '#6b7280',
-                        textTransform: 'uppercase'
-                      }}>
-                        REASON
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredData().slice(0, 200).map((p, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '14px 16px', fontSize: '14px', color: '#111', fontWeight: '500' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedPACS(p);
-                              setIsTimelineDialogOpen(true);
-                            }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#2563eb',
-                              cursor: 'pointer',
-                              textDecoration: 'underline',
-                              fontWeight: '500',
-                              fontSize: '14px',
-                              padding: '0',
-                              textAlign: 'left'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#1e40af'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#2563eb'}
-                          >
-                            {p.name}
-                          </button>
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
-                          {p.district}
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px' }}>
-                          <span style={{
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            backgroundColor:
-                              p.category === 'dynamic-t1' ? '#cffafe' :
-                              p.category === 'dynamic-t7' ? '#e0f2fe' :
-                              p.category === 'new' ? '#dcfce7' :
-                              p.category === 'consistent' ? '#fef3c7' :
-                              p.category === 'dropped' ? '#fee2e2' : '#f3f4f6',
-                            color:
-                              p.category === 'dynamic-t1' ? '#0e7490' :
-                              p.category === 'dynamic-t7' ? '#0369a1' :
-                              p.category === 'new' ? '#15803d' :
-                              p.category === 'consistent' ? '#d97706' :
-                              p.category === 'dropped' ? '#dc2626' : '#6b7280'
-                          }}>
-                            {p.categoryLabel}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
-                          {p.lastDayEndDate || '—'}
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
-                          {p.daysSinceLastDayEnd === 0 ? 'Today' :
-                           p.daysSinceLastDayEnd !== null ? `${p.daysSinceLastDayEnd} days` : '—'}
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6b7280' }}>
-                          {(() => {
-                            // Check secondary categories first (New, Consistent, Dropped)
-                            // These have more specific reasons than the primary categories
-
-                            // New PACS
-                            if (p.category === 'new') {
-                              return 'First appearance in Dynamic T-7 (day-end today)';
-                            }
-
-                            // Consistent PACS
-                            if (p.category === 'consistent') {
-                              return 'Continuing activity from previous day';
-                            }
-
-                            // Dropped PACS
-                            if (p.category === 'dropped') {
-                              return 'Previously in T-7, now inactive';
-                            }
-
-                            // Inactive PACS
-                            if (p.category === 'inactive') {
-                              const daysText = p.daysSinceLastDayEnd !== null ?
-                                `${p.daysSinceLastDayEnd} days ago` : 'unknown';
-                              return `Last activity >7 days ago (${daysText})`;
-                            }
-
-                            // Dynamic T-7 or T-1 PACS (without secondary classification)
-                            if (p.isDynamicT7 || p.isDynamicT1) {
-                              const daysText = p.daysSinceLastDayEnd === 0 ? 'today' :
-                                               p.daysSinceLastDayEnd === 1 ? '1 day ago' :
-                                               `${p.daysSinceLastDayEnd} days ago`;
-                              return `Day-end on ${p.lastDayEndDate || 'unknown date'} (${daysText})`;
-                            }
-
-                            return '—';
-                          })()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {filteredData().length === 0 && (
-                <div style={{ padding: '60px 40px', textAlign: 'center', color: '#9ca3af' }}>
-                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
-                  <div style={{ fontSize: '15px', fontWeight: '500', color: '#6b7280' }}>No PACS found</div>
-                  <div style={{ fontSize: '13px', marginTop: '6px' }}>Try adjusting your filters</div>
-                </div>
-              )}
-
-              {filteredData().length > 200 && (
-                <div style={{
-                  padding: '14px',
-                  textAlign: 'center',
-                  backgroundColor: '#f9fafb',
-                  borderTop: '1px solid #e5e7eb',
-                  fontSize: '12px',
-                  color: '#6b7280'
-                }}>
-                  Showing first 200 of {filteredData().length.toLocaleString()} PACS
-                </div>
-              )}
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Categories</label>
+              <select
+                multiple
+                value={trendCategories}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions, o => o.value);
+                  setTrendCategories(selected.length > 0 ? selected : ['all']);
+                }}
+                className="text-xs border border-gray-200 rounded-md px-2.5 py-1 text-gray-600 bg-white h-20"
+              >
+                <option value="all">All</option>
+                <option value="T-7">T-7</option>
+                <option value="T-1">T-1</option>
+                <option value="New">New PACS</option>
+                <option value="Consistent">Consistent</option>
+                <option value="Dropped">Dropped</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <p className="text-[10px] text-gray-400 mt-0.5">Ctrl/Cmd to multi-select</p>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* PACS Timeline Dialog */}
-        <Dialog open={isTimelineDialogOpen} onOpenChange={setIsTimelineDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">
-                {selectedPACS?.name || 'PACS Timeline'}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedPACS?.district && `District: ${selectedPACS.district} • `}
-                Activity timeline for the last {allSnapshots.length} days
-              </DialogDescription>
-            </DialogHeader>
+        <div className="w-full h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="date" style={{ fontSize: '11px' }} stroke="#9ca3af" />
+              <YAxis style={{ fontSize: '11px' }} stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px' }} />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              {(trendCategories.includes('all') || trendCategories.includes('T-7')) && <Line type="monotone" dataKey="T-7" stroke="#0ea5e9" strokeWidth={2} dot={{ fill: '#0ea5e9', r: 3 }} activeDot={{ r: 5 }} />}
+              {(trendCategories.includes('all') || trendCategories.includes('T-1')) && <Line type="monotone" dataKey="T-1" stroke="#06b6d4" strokeWidth={2} dot={{ fill: '#06b6d4', r: 3 }} activeDot={{ r: 5 }} />}
+              {(trendCategories.includes('all') || trendCategories.includes('New')) && <Line type="monotone" dataKey="New" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />}
+              {(trendCategories.includes('all') || trendCategories.includes('Consistent')) && <Line type="monotone" dataKey="Consistent" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', r: 3 }} activeDot={{ r: 5 }} />}
+              {(trendCategories.includes('all') || trendCategories.includes('Dropped')) && <Line type="monotone" dataKey="Dropped" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444', r: 3 }} activeDot={{ r: 5 }} />}
+              {(trendCategories.includes('all') || trendCategories.includes('Inactive')) && <Line type="monotone" dataKey="Inactive" stroke="#9ca3af" strokeWidth={2} dot={{ fill: '#9ca3af', r: 3 }} activeDot={{ r: 5 }} />}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {selectedPACS && (() => {
-              const timeline = buildPACSTimeline(selectedPACS.id);
-              const stats = getTimelineStats(timeline);
+// ── Info Tab ─────────────────────────────────────────────────────────────────
 
-              if (!stats) {
-                return (
-                  <div className="text-center py-12 text-gray-500">
-                    No timeline data available for this PACS
-                  </div>
-                );
-              }
+function InfoTab({ allSnapshots }) {
+  const defs = [
+    { color: '#0ea5e9', label: 'Dynamic Day End (T-7)', desc: 'Last day-end within last 7 days (including snapshot date)' },
+    { color: '#06b6d4', label: 'Dynamic Day End (T-1)', desc: 'Last day-end equals snapshot date (most current)' },
+    { color: '#10b981', label: 'New PACS', desc: 'Not in T-7 yesterday, but performed day-end today' },
+    { color: '#f59e0b', label: 'Consistent PACS', desc: 'In T-7 list on both current and previous day' },
+    { color: '#ef4444', label: 'Dropped PACS', desc: 'Were in T-7 yesterday, but not in current list' },
+    { color: '#9ca3af', label: 'Inactive (>T-7)', desc: 'Last day-end more than 7 days old' },
+  ];
 
-              return (
-                <div className="space-y-6">
-                  {/* Statistics */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="text-xs text-gray-500 mb-1">Current Status</div>
-                      <div className="text-sm font-semibold" style={{ color: getCategoryColor(stats.currentStatus.category) }}>
-                        {stats.currentStatus.categoryLabel}
-                      </div>
-                    </div>
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="text-xs text-gray-500 mb-1">Active Days</div>
-                      <div className="text-lg font-semibold text-blue-600">
-                        {stats.activeDays}/{stats.totalDays}
-                      </div>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <div className="text-xs text-gray-500 mb-1">Current Streak</div>
-                      <div className="text-lg font-semibold text-green-600">
-                        {stats.currentStreak} days
-                      </div>
-                    </div>
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <div className="text-xs text-gray-500 mb-1">Longest Streak</div>
-                      <div className="text-lg font-semibold text-purple-600">
-                        {stats.longestStreak} days
-                      </div>
-                    </div>
-                    <div className="bg-amber-50 rounded-lg p-4">
-                      <div className="text-xs text-gray-500 mb-1">Status Changes</div>
-                      <div className="text-lg font-semibold text-amber-600">
-                        {stats.statusChanges}
-                      </div>
-                    </div>
-                  </div>
+  return (
+    <div className="space-y-5 max-w-3xl">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <p className="text-sm font-semibold text-gray-900 mb-4">Category Definitions</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {defs.map(({ color, label, desc }) => (
+            <div key={label} className="flex gap-3">
+              <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: color }} />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-                  {/* Visual Timeline */}
-                  <div>
-                    <h3 className="text-sm font-semibold mb-3">Activity Timeline</h3>
-                    <div className="flex gap-1 overflow-x-auto pb-2">
-                      {timeline.map((day, index) => (
-                        <div
-                          key={index}
-                          className="relative group flex-shrink-0"
-                          style={{
-                            width: '32px',
-                            height: '80px',
-                            backgroundColor: getCategoryColor(day.category),
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {/* Tooltip on hover */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            <div className="font-semibold">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                            <div>{day.categoryLabel}</div>
-                            {day.lastDayEnd && <div className="text-gray-300">Last: {day.lastDayEnd}</div>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Legend */}
-                  <div>
-                    <h3 className="text-sm font-semibold mb-3">Status Legend</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('dynamic-t1'), borderRadius: '4px' }}></div>
-                        <span>Dynamic (T-1)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('dynamic-t7'), borderRadius: '4px' }}></div>
-                        <span>Dynamic (T-7)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('new'), borderRadius: '4px' }}></div>
-                        <span>New PACS</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('consistent'), borderRadius: '4px' }}></div>
-                        <span>Consistent</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('dropped'), borderRadius: '4px' }}></div>
-                        <span>Dropped</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: getCategoryColor('inactive'), borderRadius: '4px' }}></div>
-                        <span>Inactive</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status Change Log */}
-                  <div>
-                    <h3 className="text-sm font-semibold mb-3">Recent Activity</h3>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {timeline.slice().reverse().slice(0, 10).map((day, index) => (
-                        <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg text-sm">
-                          <div className="flex items-center gap-3">
-                            <div style={{ width: '12px', height: '12px', backgroundColor: getCategoryColor(day.category), borderRadius: '2px' }}></div>
-                            <span className="text-gray-600">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="font-medium" style={{ color: getCategoryColor(day.category) }}>
-                              {day.categoryLabel}
-                            </span>
-                            {day.lastDayEnd && (
-                              <span className="text-xs text-gray-500">
-                                Last: {day.lastDayEnd}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </DialogContent>
-        </Dialog>
+      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <p className="text-sm font-semibold text-gray-900 mb-3">System Info</p>
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-md font-medium">
+            ☁ Cloud Database (Redis) — syncs across devices
+          </span>
+          {allSnapshots.length > 0 && (
+            <span className="text-xs px-3 py-1.5 bg-violet-50 border border-violet-200 text-violet-700 rounded-md font-medium">
+              {allSnapshots.length} day{allSnapshots.length !== 1 ? 's' : ''} of data stored
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
