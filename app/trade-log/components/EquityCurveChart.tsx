@@ -6,7 +6,9 @@ import { Chart, LineController, LineElement, PointElement, LinearScale, Category
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
 
-export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
+interface Props { trades: Trade[]; liveUnrealizedPnl: number | null }
+
+export default function EquityCurveChart({ trades, liveUnrealizedPnl }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -21,12 +23,8 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
         return dateA.localeCompare(dateB);
       });
 
-    const openTrades = [...trades]
-      .filter((t) => t.status === "Open")
-      .sort((a, b) => a.firstEntryDate.localeCompare(b.firstEntryDate));
-
     let cum = 0;
-    const points: { date: string; value: number; ticker: string; isOpen?: boolean }[] = [];
+    const points: { date: string; value: number; ticker: string }[] = [];
 
     if (closed.length > 0) {
       points.push({ date: closed[0].firstEntryDate, value: 0, ticker: "" });
@@ -38,43 +36,39 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
       points.push({ date, value: parseFloat(cum.toFixed(2)), ticker: t.ticker });
     });
 
-    // Add open trades as dots at the current cumulative level (they haven't added to realized PnL yet)
-    // Each open trade gets a point at its entry date, sitting at the current cumulative baseline
-    // with partial realized PnL if any exits have been made
-    const openPoints: { date: string; value: number; ticker: string; riskAtStop: number; deployed: number; partialPnl: number }[] = [];
-    openTrades.forEach((t) => {
-      const partialPnl = t.realizedPnl; // realized P&L from partial exits
-      const riskAtStop = Math.abs(t.avgEntry - t.stopLoss) * t.openShares;
-      const deployed = t.avgEntry * t.openShares;
-      openPoints.push({
-        date: t.firstEntryDate,
-        value: parseFloat((cum + partialPnl).toFixed(2)),
-        ticker: t.ticker,
-        riskAtStop,
-        deployed,
-        partialPnl,
-      });
-    });
-
-    const allPoints = [...points, ...openPoints.map((p) => ({ ...p, isOpen: true }))];
-    allPoints.sort((a, b) => a.date.localeCompare(b.date));
-
-    const closedData = allPoints.map((p) => p.isOpen ? null : p.value);
-    const openData = allPoints.map((p) => p.isOpen ? p.value : null);
-
-    const labels = allPoints.map((p) => {
+    const realizedData = points.map((p) => p.value);
+    const labels = points.map((p) => {
       if (!p.date) return "";
       const d = new Date(p.date);
       return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" });
     });
 
+    // Dashed unrealized extension: last realized point + today's date with realized+unrealized value
+    const hasUnrealized = liveUnrealizedPnl !== null && liveUnrealizedPnl !== 0 && trades.some((t) => t.status === "Open");
+    const unrealizedData: (number | null)[] = realizedData.map(() => null);
+    let unrealizedLabel = "";
+    if (hasUnrealized && points.length > 0) {
+      // Bridge point: last realized value (connects the two lines)
+      unrealizedData[unrealizedData.length - 1] = cum;
+      // Extension point: realized + unrealized
+      const totalWithUnrealized = parseFloat((cum + liveUnrealizedPnl!).toFixed(2));
+      unrealizedData.push(totalWithUnrealized);
+      const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" });
+      labels.push(today);
+      unrealizedLabel = today;
+      realizedData.push(null as unknown as number);
+      points.push({ date: unrealizedLabel, value: totalWithUnrealized, ticker: "" });
+    }
+
     if (chartRef.current) chartRef.current.destroy();
 
-    const last = points[points.length - 1]?.value ?? 0;
+    const last = cum;
     const ctx = canvasRef.current.getContext("2d")!;
     const grad = ctx.createLinearGradient(0, 0, 0, 220);
     grad.addColorStop(0, last >= 0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)");
     grad.addColorStop(1, last >= 0 ? "rgba(16,185,129,0.01)" : "rgba(239,68,68,0.01)");
+
+    const unrealizedColor = (liveUnrealizedPnl ?? 0) >= 0 ? "#3b82f6" : "#f97316";
 
     chartRef.current = new Chart(canvasRef.current, {
       type: "line",
@@ -83,31 +77,33 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
         datasets: [
           {
             label: "Realized P&L",
-            data: closedData,
+            data: realizedData,
             borderColor: last >= 0 ? "#10b981" : "#ef4444",
             backgroundColor: grad,
             borderWidth: 2,
             fill: true,
-            pointRadius: closedData.filter(Boolean).length > 30 ? 0 : 4,
+            pointRadius: realizedData.filter((v) => v !== null).length > 30 ? 0 : 4,
             pointBackgroundColor: last >= 0 ? "#10b981" : "#ef4444",
             pointBorderColor: "#fff",
             pointBorderWidth: 2,
             tension: 0.4,
             spanGaps: false,
           },
-          {
-            label: "Open Positions",
-            data: openData,
-            borderColor: "#3b82f6",
+          ...(hasUnrealized ? [{
+            label: "With Unrealized",
+            data: unrealizedData,
+            borderColor: unrealizedColor,
             backgroundColor: "transparent",
-            borderWidth: 0,
-            pointRadius: 7,
-            pointHoverRadius: 9,
-            pointBackgroundColor: "#3b82f6",
+            borderWidth: 2,
+            borderDash: [5, 4],
+            fill: false,
+            pointRadius: [0, ...unrealizedData.slice(1).map((v, i) => i === unrealizedData.length - 2 ? 5 : 0)],
+            pointBackgroundColor: unrealizedColor,
             pointBorderColor: "#fff",
             pointBorderWidth: 2,
+            tension: 0,
             spanGaps: false,
-          },
+          } as never] : []),
         ],
       },
       options: {
@@ -125,24 +121,19 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
             callbacks: {
               title: (items) => {
                 const idx = items[0].dataIndex;
-                const p = allPoints[idx];
+                const p = points[idx];
                 return p?.ticker ? `${p.date} · ${p.ticker}` : p?.date ?? "";
               },
               label: (c) => {
-                const idx = c.dataIndex;
-                const p = allPoints[idx];
                 const v: number = c.parsed.y ?? 0;
-                if (p?.isOpen) {
-                  const op = openPoints.find((o) => o.ticker === p.ticker && o.date === p.date);
-                  const lines = [` 🔵 OPEN — cumulative base: ₹${v >= 0 ? "+" : ""}${v.toLocaleString("en-IN")}`];
-                  if (op) {
-                    lines.push(` Deployed: ₹${op.deployed.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`);
-                    lines.push(` Risk @ stop: −₹${op.riskAtStop.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`);
-                    if (op.partialPnl !== 0) lines.push(` Partial realized: ${op.partialPnl > 0 ? "+" : "−"}₹${Math.abs(op.partialPnl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`);
-                  }
-                  return lines;
+                if (c.datasetIndex === 1) {
+                  return [
+                    ` Realized: ₹${cum >= 0 ? "+" : ""}${cum.toLocaleString("en-IN")}`,
+                    ` Unrealized: ${(liveUnrealizedPnl ?? 0) >= 0 ? "+" : "−"}₹${Math.abs(liveUnrealizedPnl ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+                    ` Total: ₹${v >= 0 ? "+" : ""}${v.toLocaleString("en-IN")}`,
+                  ];
                 }
-                return ` Cumulative: ₹${v >= 0 ? "+" : ""}${v.toLocaleString("en-IN")}`;
+                return ` Realized: ₹${v >= 0 ? "+" : ""}${v.toLocaleString("en-IN")}`;
               },
             },
           },
@@ -167,39 +158,41 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
     });
 
     return () => { chartRef.current?.destroy(); };
-  }, [trades]);
+  }, [trades, liveUnrealizedPnl]);
 
   const openTrades = trades.filter((t) => t.status === "Open");
 
   if (!trades.filter((t) => t.status === "Closed").length && !openTrades.length)
-    return <div className="h-64 flex items-center justify-center"><p className="text-gray-200 text-xs">No trades yet</p></div>;
+    return <div className="h-64 flex items-center justify-center"><p className="text-gray-200 text-xs">No closed trades yet</p></div>;
 
-  const totalRisk = openTrades.reduce((s, t) => s + Math.abs(t.avgEntry - t.stopLoss) * t.openShares, 0);
-  const totalDeployed = openTrades.reduce((s, t) => s + t.avgEntry * t.openShares, 0);
+  const upnl = liveUnrealizedPnl;
+  const fmt = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   return (
     <div>
       <div className="h-64"><canvas ref={canvasRef} /></div>
       {openTrades.length > 0 && (
-        <div className="mt-3 flex items-center gap-4 flex-wrap border-t border-gray-100 pt-3">
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-            <span className="text-gray-500">{openTrades.length} open position{openTrades.length !== 1 ? "s" : ""}</span>
-          </div>
-          <div className="text-[11px] text-gray-500">
-            Deployed: <span className="font-semibold text-gray-700">₹{totalDeployed.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-          </div>
-          <div className="text-[11px] text-gray-500">
-            Max risk: <span className="font-semibold text-red-500">−₹{totalRisk.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-          </div>
-          <div className="ml-auto flex items-center gap-3 text-[10px] text-gray-400">
-            {openTrades.map((t) => (
-              <span key={t.id} className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                {t.ticker}
-              </span>
-            ))}
-          </div>
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 text-[11px] flex-wrap">
+          <span className="flex items-center gap-1.5 text-gray-500">
+            <span className="w-2.5 h-2 rounded-sm bg-emerald-500 inline-block" />
+            Realized
+          </span>
+          <span className="flex items-center gap-1.5 text-gray-500">
+            <span className="inline-flex gap-0.5">
+              <span className="w-1.5 h-2 rounded-sm bg-blue-500 inline-block" />
+              <span className="w-1 h-2 inline-block" />
+              <span className="w-1.5 h-2 rounded-sm bg-blue-500 inline-block" />
+            </span>
+            With unrealized
+          </span>
+          <span className="text-gray-400">{openTrades.length} open · {openTrades.map((t) => t.ticker).join(", ")}</span>
+          {upnl !== null ? (
+            <span className={`ml-auto font-semibold ${upnl > 0 ? "text-blue-600" : upnl < 0 ? "text-red-500" : "text-gray-400"}`}>
+              {upnl > 0 ? "+" : upnl < 0 ? "−" : ""}{upnl !== 0 ? fmt(upnl) : "—"} unrealized
+            </span>
+          ) : (
+            <span className="ml-auto text-gray-300 text-[10px]">fetching live prices…</span>
+          )}
         </div>
       )}
     </div>

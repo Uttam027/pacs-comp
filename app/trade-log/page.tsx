@@ -38,11 +38,35 @@ export default function TradeLogPage() {
   const [filterResult, setFilterResult] = useState("All");
   const [activeNav, setActiveNav] = useState("overview");
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const [liveUnrealizedPnl, setLiveUnrealizedPnl] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/trade-log")
       .then((r) => r.json())
-      .then((data: Trade[]) => setTrades(Array.isArray(data) ? data : []))
+      .then((data: Trade[]) => {
+        const arr = Array.isArray(data) ? data : [];
+        setTrades(arr);
+        return arr;
+      })
+      .then((arr) => {
+        const openTrades = arr.filter((t) => t.status === "Open" && t.openShares > 0);
+        if (openTrades.length === 0) { setLiveUnrealizedPnl(0); return; }
+        Promise.all(
+          openTrades.map((t) => {
+            const sym = t.yahooTicker || `${t.ticker}.NS`;
+            return fetch(`/api/trade-log/quote?ticker=${encodeURIComponent(sym)}`)
+              .then((r) => r.json())
+              .then((q) => {
+                if (!q.price) return 0;
+                const pnl = t.direction === "Long"
+                  ? (q.price - t.avgEntry) * t.openShares
+                  : (t.avgEntry - q.price) * t.openShares;
+                return pnl;
+              })
+              .catch(() => 0);
+          })
+        ).then((pnls) => setLiveUnrealizedPnl(pnls.reduce((s, p) => s + p, 0)));
+      })
       .catch(() => setTrades([]))
       .finally(() => setLoading(false));
   }, []);
@@ -186,6 +210,7 @@ export default function TradeLogPage() {
                   onFilterResult={setFilterResult}
                   onFilterSetup={setFilterSetup}
                   onOpenTrade={setSelectedTrade}
+                  liveUnrealizedPnl={liveUnrealizedPnl}
                 />
               )}
               {activeTab === "Trade Log" && (
@@ -256,6 +281,7 @@ function OverviewTab({
   onFilterResult,
   onFilterSetup,
   onOpenTrade,
+  liveUnrealizedPnl,
 }: {
   trades: Trade[];
   filterResult: string;
@@ -264,11 +290,12 @@ function OverviewTab({
   onFilterResult: (v: string) => void;
   onFilterSetup: (v: string) => void;
   onOpenTrade: (t: Trade) => void;
+  liveUnrealizedPnl: number | null;
 }) {
   return (
     <div className="space-y-5">
       {/* Stats overview */}
-      <StatsCards trades={trades} />
+      <StatsCards trades={trades} liveUnrealizedPnl={liveUnrealizedPnl} />
 
       {/* Charts row: equity curve + secondary stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -278,16 +305,8 @@ function OverviewTab({
               <p className="text-sm font-semibold text-gray-900">Equity Curve</p>
               <p className="text-xs text-gray-400 mt-0.5">Cumulative realized P&amp;L over time</p>
             </div>
-            <div className="flex gap-1">
-              {["Sent", "Opened", "Clicked"].map((l, i) => (
-                <span key={l} className={`text-[10px] flex items-center gap-1 text-gray-400 ${i > 0 ? "ml-3" : ""}`}>
-                  <span className={`w-2 h-2 rounded-full ${i === 0 ? "bg-violet-500" : i === 1 ? "bg-emerald-500" : "bg-amber-400"}`} />
-                  {l === "Sent" ? "Entry" : l === "Opened" ? "Closed" : "Open"}
-                </span>
-              ))}
-            </div>
           </div>
-          <EquityCurveChart trades={trades} />
+          <EquityCurveChart trades={trades} liveUnrealizedPnl={liveUnrealizedPnl} />
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
@@ -430,7 +449,7 @@ function AnalyticsTab({ trades }: { trades: Trade[] }) {
       <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
         <p className="text-sm font-semibold text-gray-900 mb-1">Equity Curve</p>
         <p className="text-xs text-gray-400 mb-4">Cumulative realized P&amp;L over time</p>
-        <EquityCurveChart trades={trades} />
+        <EquityCurveChart trades={trades} liveUnrealizedPnl={null} />
       </div>
       <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
         <p className="text-sm font-semibold text-gray-900 mb-1">P&amp;L by Period</p>
